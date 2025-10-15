@@ -90,7 +90,7 @@ public class KnowledgeEntryServiceImpl extends ServiceImpl<KnowledgeEntryMapper,
     public Page<KnowledgeEntry> search(SearchRequest request) {
         Page<KnowledgeEntry> page = new Page<>(request.getCurrent(), request.getSize());
         
-        return knowledgeEntryMapper.fullTextSearch(
+        com.baomidou.mybatisplus.core.metadata.IPage<KnowledgeEntry> result = knowledgeEntryMapper.fullTextSearch(
             page,
             request.getKeyword(),
             request.getSourceIds(),
@@ -98,6 +98,9 @@ public class KnowledgeEntryServiceImpl extends ServiceImpl<KnowledgeEntryMapper,
             request.getStartDate(),
             request.getEndDate()
         );
+        
+        // 将 IPage 转换为 Page
+        return (Page<KnowledgeEntry>) result;
     }
 
     @Override

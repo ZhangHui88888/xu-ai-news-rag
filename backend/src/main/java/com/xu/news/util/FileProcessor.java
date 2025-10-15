@@ -94,12 +94,22 @@ public class FileProcessor {
      * 分割文本为chunks（用于向量化）
      */
     public List<String> splitTextIntoChunks(String text, int maxChunkSize, int overlap) {
-        return cn.hutool.core.text.StrSplitter.split(
-            text, 
-            maxChunkSize, 
-            true, 
-            true
-        );
+        java.util.List<String> chunks = new java.util.ArrayList<>();
+        
+        if (text == null || text.isEmpty()) {
+            return chunks;
+        }
+        
+        int start = 0;
+        int length = text.length();
+        
+        while (start < length) {
+            int end = Math.min(start + maxChunkSize, length);
+            chunks.add(text.substring(start, end));
+            start += (maxChunkSize - overlap);
+        }
+        
+        return chunks;
     }
 
     /**
