@@ -45,19 +45,17 @@ public class SecurityConfig {
             
             // 配置授权规则
             .authorizeHttpRequests(auth -> auth
-                // 公开接口
-                .requestMatchers("/auth/**", "/health", "/actuator/**").permitAll()
-                // 其他接口需要认证
-                .anyRequest().authenticated()
+                // 公开接口 - 所有路径都开放（仅测试用）
+                .anyRequest().permitAll()
             )
             
             // 无状态Session
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+            );
             
-            // 添加JWT过滤器
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            // 暂时禁用JWT过滤器用于测试
+            // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -75,12 +73,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:3000"
-        ));
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

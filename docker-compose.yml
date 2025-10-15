@@ -25,24 +25,17 @@ services:
       timeout: 5s
       retries: 5
 
-  # Ollama (本地LLM服务)
-  ollama:
-    image: ollama/ollama:latest
-    container_name: xu-news-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - xu-news-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+  # Ollama (本地LLM服务) - 使用 Windows 主机上的 Ollama
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: xu-news-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   networks:
+  #     - xu-news-network
 
   # n8n (工作流自动化)
   n8n:
@@ -56,6 +49,7 @@ services:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
+      - N8N_SECURE_COOKIE=false
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=Asia/Shanghai
       - TZ=Asia/Shanghai
@@ -83,7 +77,7 @@ services:
       - DB_NAME=xu_news_rag
       - DB_USERNAME=xu_news
       - DB_PASSWORD=xu_news_pass
-      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_URL=http://192.168.171.1:11434
       - N8N_URL=http://n8n:5678
       - JWT_SECRET=XU_NEWS_AI_RAG_SECRET_KEY_2025_VERY_LONG_AND_SECURE_STRING_FOR_JWT_TOKEN_GENERATION
       - TZ=Asia/Shanghai
@@ -98,29 +92,29 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      ollama:
-        condition: service_started
+      # ollama:
+      #   condition: service_started
       n8n:
         condition: service_started
 
   # Vue3前端 (开发环境使用)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: xu-news-frontend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5173:5173"
-  #   environment:
-  #     - VITE_API_BASE_URL=http://localhost:8080/api
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #   networks:
-  #     - xu-news-network
-  #   depends_on:
-  #     - backend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: xu-news-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://192.168.171.128:8080/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - xu-news-network
+    depends_on:
+      - backend
 
   # Nginx (生产环境使用)
   # nginx:
