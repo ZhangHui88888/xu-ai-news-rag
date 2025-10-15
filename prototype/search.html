@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索 - XU-News-AI-RAG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #F5F7FA;
+            color: #303133;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            height: 64px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #303133;
+            text-decoration: none;
+            margin-right: 48px;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 32px;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #606266;
+            font-size: 15px;
+            transition: color 0.3s;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: #409EFF;
+        }
+
+        /* 主容器 */
+        .main-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* 搜索框区域 */
+        .search-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            flex: 1;
+            height: 48px;
+            padding: 0 20px;
+            border: 2px solid #DCDFE6;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #409EFF;
+        }
+
+        .search-button {
+            padding: 0 32px;
+            height: 48px;
+            background: #409EFF;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-button:hover {
+            background: #66B1FF;
+        }
+
+        /* 搜索选项 */
+        .search-options {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .search-type {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-type label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #606266;
+        }
+
+        .search-type input[type="radio"] {
+            cursor: pointer;
+        }
+
+        /* 筛选条件 */
+        .filters {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #DCDFE6;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-select:hover {
+            border-color: #409EFF;
+        }
+
+        /* 结果统计 */
+        .results-header {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-count {
+            font-size: 14px;
+            color: #606266;
+        }
+
+        .results-count strong {
+            color: #409EFF;
+            font-size: 16px;
+        }
+
+        .sort-select {
+            padding: 6px 12px;
+            border: 1px solid #DCDFE6;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* 搜索结果 */
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .result-item {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .result-item:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #303133;
+            margin-bottom: 8px;
+            flex: 1;
+        }
+
+        .similarity-badge {
+            padding: 4px 12px;
+            background: #F0F9FF;
+            color: #409EFF;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 12px;
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: #909399;
+            margin-bottom: 12px;
+        }
+
+        .result-content {
+            font-size: 14px;
+            color: #606266;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .result-tags {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .tag {
+            padding: 4px 12px;
+            background: #F0F9FF;
+            color: #409EFF;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #EBEEF5;
+        }
+
+        .action-link {
+            font-size: 13px;
+            color: #409EFF;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .action-link:hover {
+            text-decoration: underline;
+        }
+
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 32px;
+            padding: 24px;
+        }
+
+        .page-item {
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #DCDFE6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .page-item:hover {
+            border-color: #409EFF;
+            color: #409EFF;
+        }
+
+        .page-item.active {
+            background: #409EFF;
+            color: white;
+            border-color: #409EFF;
+        }
+
+        .page-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            background: white;
+            padding: 64px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-text {
+            font-size: 16px;
+            color: #909399;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="home.html" class="logo">
+                <span>📰</span>
+                <span>XU-News-AI-RAG</span>
+            </a>
+            <div class="nav-menu">
+                <a href="home.html" class="nav-item">
+                    <span>🏠</span>
+                    <span>首页</span>
+                </a>
+                <a href="search.html" class="nav-item active">
+                    <span>🔍</span>
+                    <span>搜索</span>
+                </a>
+                <a href="chat.html" class="nav-item">
+                    <span>💬</span>
+                    <span>问答</span>
+                </a>
+                <a href="knowledge.html" class="nav-item">
+                    <span>📚</span>
+                    <span>知识库</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 搜索框 -->
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="🔍 输入关键词或问题..." value="AI 大模型">
+                <button class="search-button" onclick="performSearch()">搜索</button>
+            </div>
+
+            <div class="search-options">
+                <span style="font-size: 14px; color: #606266;">搜索方式：</span>
+                <div class="search-type">
+                    <label>
+                        <input type="radio" name="searchType" value="keyword">
+                        关键词搜索
+                    </label>
+                    <label>
+                        <input type="radio" name="searchType" value="semantic" checked>
+                        语义搜索
+                    </label>
+                    <label>
+                        <input type="radio" name="searchType" value="hybrid">
+                        混合搜索
+                    </label>
+                </div>
+            </div>
+
+            <div class="filters">
+                <select class="filter-select">
+                    <option>来源: 全部</option>
+                    <option>来源: TechCrunch</option>
+                    <option>来源: The Verge</option>
+                    <option>来源: 36Kr</option>
+                </select>
+                <select class="filter-select">
+                    <option>日期: 最近一周</option>
+                    <option>日期: 最近一月</option>
+                    <option>日期: 最近三月</option>
+                    <option>日期: 全部</option>
+                </select>
+                <select class="filter-select">
+                    <option>标签: 全部</option>
+                    <option>标签: AI</option>
+                    <option>标签: 机器学习</option>
+                    <option>标签: NLP</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div class="results-header">
+            <div class="results-count">
+                找到 <strong>127</strong> 条结果
+            </div>
+            <select class="sort-select">
+                <option>排序: 相关度</option>
+                <option>排序: 时间最新</option>
+                <option>排序: 时间最早</option>
+                <option>排序: 相似度</option>
+            </select>
+        </div>
+
+        <!-- 搜索结果列表 -->
+        <div class="results-list">
+            <div class="result-item" onclick="alert('原型演示：点击查看详情')">
+                <div class="result-header">
+                    <div>
+                        <div class="result-title">📰 OpenAI发布GPT-5预览版</div>
+                        <div class="result-meta">
+                            <span>来源: TechCrunch</span>
+                            <span>|</span>
+                            <span>发布: 2小时前</span>
+                            <span>|</span>
+                            <span>查看: 145次</span>
+                        </div>
+                    </div>
+                    <div class="similarity-badge">相似度: 95%</div>
+                </div>
+                <div class="result-content">
+                    OpenAI今日宣布推出GPT-5的早期预览版，据称在推理能力、多模态理解等方面都有显著提升。新版本支持更长的上下文窗口（可达100万token），并改进了代码生成能力。内部测试显示，GPT-5在复杂推理任务上的表现超越了GPT-4...
+                </div>
+                <div class="result-tags">
+                    <span class="tag">AI</span>
+                    <span class="tag">GPT</span>
+                    <span class="tag">OpenAI</span>
+                    <span class="tag">大模型</span>
+                </div>
+                <div class="result-actions">
+                    <a href="#" class="action-link">查看详情</a>
+                    <a href="#" class="action-link">添加到收藏</a>
+                    <a href="#" class="action-link">分享</a>
+                </div>
+            </div>
+
+            <div class="result-item" onclick="alert('原型演示：点击查看详情')">
+                <div class="result-header">
+                    <div>
+                        <div class="result-title">📰 谷歌推出Gemini Pro 2.0</div>
+                        <div class="result-meta">
+                            <span>来源: The Verge</span>
+                            <span>|</span>
+                            <span>发布: 5小时前</span>
+                            <span>|</span>
+                            <span>查看: 98次</span>
+                        </div>
+                    </div>
+                    <div class="similarity-badge">相似度: 88%</div>
+                </div>
+                <div class="result-content">
+                    谷歌今天发布了最新的大模型Gemini Pro 2.0，声称在基准测试中超越了GPT-4。新版本增强了多语言能力，特别是在中文处理方面有显著改进。Gemini Pro 2.0采用了全新的训练方法，大幅降低了幻觉现象...
+                </div>
+                <div class="result-tags">
+                    <span class="tag">AI</span>
+                    <span class="tag">Google</span>
+                    <span class="tag">Gemini</span>
+                </div>
+                <div class="result-actions">
+                    <a href="#" class="action-link">查看详情</a>
+                    <a href="#" class="action-link">添加到收藏</a>
+                    <a href="#" class="action-link">分享</a>
+                </div>
+            </div>
+
+            <div class="result-item" onclick="alert('原型演示：点击查看详情')">
+                <div class="result-header">
+                    <div>
+                        <div class="result-title">📰 Anthropic更新Claude 3.5 Sonnet</div>
+                        <div class="result-meta">
+                            <span>来源: MIT Technology Review</span>
+                            <span>|</span>
+                            <span>发布: 昨天</span>
+                            <span>|</span>
+                            <span>查看: 234次</span>
+                        </div>
+                    </div>
+                    <div class="similarity-badge">相似度: 82%</div>
+                </div>
+                <div class="result-content">
+                    Anthropic发布了Claude 3.5 Sonnet的重大更新，新增了计算机使用（Computer Use）功能，AI可以直接操作计算机完成任务。这标志着AI从纯文本交互向实际操作的重要转变...
+                </div>
+                <div class="result-tags">
+                    <span class="tag">AI</span>
+                    <span class="tag">LLM</span>
+                    <span class="tag">Claude</span>
+                </div>
+                <div class="result-actions">
+                    <a href="#" class="action-link">查看详情</a>
+                    <a href="#" class="action-link">添加到收藏</a>
+                    <a href="#" class="action-link">分享</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination">
+            <div class="page-item disabled">上一页</div>
+            <div class="page-item active">1</div>
+            <div class="page-item">2</div>
+            <div class="page-item">3</div>
+            <div class="page-item">4</div>
+            <div class="page-item">5</div>
+            <div class="page-item">...</div>
+            <div class="page-item">13</div>
+            <div class="page-item">下一页</div>
+        </div>
+    </div>
+
+    <script>
+        function performSearch() {
+            const query = document.getElementById('searchInput').value;
+            if (query.trim()) {
+                alert('原型演示：搜索 "' + query + '"');
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    </script>
+</body>
+</html>
+

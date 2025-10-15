@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - XU-News-AI-RAG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 48px 40px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .logo-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #303133;
+            margin-bottom: 8px;
+        }
+
+        .logo-subtitle {
+            font-size: 14px;
+            color: #909399;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: #606266;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            height: 44px;
+            padding: 0 16px;
+            border: 1px solid #DCDFE6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #409EFF;
+            box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #C0C4CC;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            color: #606266;
+            cursor: pointer;
+        }
+
+        .remember-me input {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .forgot-password {
+            color: #409EFF;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .login-button {
+            width: 100%;
+            height: 44px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .login-button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .register-link {
+            text-align: center;
+            font-size: 14px;
+            color: #606266;
+        }
+
+        .register-link a {
+            color: #409EFF;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .demo-note {
+            margin-top: 24px;
+            padding: 12px;
+            background: #F0F9FF;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #606266;
+            text-align: center;
+        }
+
+        .demo-note strong {
+            color: #409EFF;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-section">
+            <div class="logo">📰</div>
+            <div class="logo-title">XU-News-AI-RAG</div>
+            <div class="logo-subtitle">个性化新闻智能知识库</div>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label">📧 邮箱</label>
+                <input 
+                    type="email" 
+                    class="form-input" 
+                    placeholder="请输入邮箱地址"
+                    value="admin@example.com"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">🔒 密码</label>
+                <input 
+                    type="password" 
+                    class="form-input" 
+                    placeholder="请输入密码"
+                    value="123456"
+                    required
+                >
+            </div>
+
+            <div class="form-options">
+                <label class="remember-me">
+                    <input type="checkbox" checked>
+                    记住我
+                </label>
+                <a href="#" class="forgot-password">忘记密码？</a>
+            </div>
+
+            <button type="submit" class="login-button">登 录</button>
+
+            <div class="register-link">
+                还没有账号？<a href="register.html">立即注册</a>
+            </div>
+
+            <div class="demo-note">
+                <strong>📌 原型演示说明：</strong><br>
+                点击"登录"按钮直接进入系统
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 模拟登录过程
+            const button = document.querySelector('.login-button');
+            button.textContent = '登录中...';
+            button.style.opacity = '0.6';
+            
+            setTimeout(() => {
+                // 跳转到首页
+                window.location.href = 'home.html';
+            }, 800);
+        });
+    </script>
+</body>
+</html>
+

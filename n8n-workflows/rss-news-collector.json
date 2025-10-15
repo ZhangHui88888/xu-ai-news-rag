@@ -1,0 +1,171 @@
+{
+  "name": "RSS新闻采集工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "定时触发",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://techcrunch.com/feed/",
+        "options": {}
+      },
+      "id": "rss-feed-reader",
+      "name": "RSS订阅源",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.link}}",
+        "options": {}
+      },
+      "id": "http-request",
+      "name": "获取全文",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// 清理HTML，提取正文\nconst content = $input.item.json.data;\nconst title = $input.item.json.title;\nconst url = $input.item.json.link;\n\n// 简单的HTML清理（实际应用中使用更复杂的解析）\nconst cleanContent = content\n  .replace(/<script[^>]*>.*?<\\/script>/gi, '')\n  .replace(/<style[^>]*>.*?<\\/style>/gi, '')\n  .replace(/<[^>]+>/g, '')\n  .trim();\n\nreturn {\n  title,\n  content: cleanContent,\n  url,\n  publishedAt: new Date().toISOString()\n};"
+      },
+      "id": "code-node",
+      "name": "处理内容",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:3b",
+        "prompt": "请为以下新闻生成一个简洁的中文摘要（不超过200字）：\n\n标题：{{$json.title}}\n\n内容：{{$json.content}}",
+        "options": {}
+      },
+      "id": "ollama-llm",
+      "name": "生成摘要",
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "model": "all-minilm-l6-v2",
+        "text": "={{$json.title}} {{$json.content}}",
+        "options": {}
+      },
+      "id": "ollama-embedding",
+      "name": "生成向量",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "knowledge_entry",
+        "columns": "title,content,summary,source_url,vector_embedding,tags,content_type,status",
+        "values": "={{$json.title}},={{$json.content}},={{$json.summary}},={{$json.url}},={{JSON.stringify($json.embedding)}},={{JSON.stringify(['AI', 'Tech'])}},news,1"
+      },
+      "id": "mysql-insert",
+      "name": "保存到MySQL",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 1,
+      "position": [1450, 300],
+      "credentials": {
+        "mysql": {
+          "id": "1",
+          "name": "MySQL - xu_news_rag"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/knowledge",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_JWT_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "content",
+              "value": "={{$json.content}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{$json.summary}}"
+            },
+            {
+              "name": "sourceUrl",
+              "value": "={{$json.url}}"
+            }
+          ]
+        }
+      },
+      "id": "webhook-notify",
+      "name": "通知后端",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "定时触发": {
+      "main": [[{"node": "RSS订阅源", "type": "main", "index": 0}]]
+    },
+    "RSS订阅源": {
+      "main": [[{"node": "获取全文", "type": "main", "index": 0}]]
+    },
+    "获取全文": {
+      "main": [[{"node": "处理内容", "type": "main", "index": 0}]]
+    },
+    "处理内容": {
+      "main": [[{"node": "生成摘要", "type": "main", "index": 0}]]
+    },
+    "生成摘要": {
+      "main": [[{"node": "生成向量", "type": "main", "index": 0}]]
+    },
+    "生成向量": {
+      "main": [[{"node": "保存到MySQL", "type": "main", "index": 0}]]
+    },
+    "保存到MySQL": {
+      "main": [[{"node": "通知后端", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": ["RSS", "新闻采集", "AI"],
+  "meta": {
+    "instanceId": "xu-news-ai-rag"
+  }
+}
+

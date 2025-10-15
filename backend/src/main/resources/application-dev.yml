@@ -1,0 +1,18 @@
+# 开发环境配置
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/xu_news_rag?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: "592802"
+
+ollama:
+  base-url: http://localhost:11434
+
+n8n:
+  base-url: http://localhost:5678
+
+logging:
+  level:
+    com.xu.news: DEBUG
+    com.baomidou.mybatisplus: DEBUG
+
