@@ -14,7 +14,7 @@
         >
           <div class="message-avatar">
             <el-icon v-if="message.role === 'user'" :size="24"><User /></el-icon>
-            <el-icon v-else :size="24"><Robot /></el-icon>
+            <el-icon v-else :size="24"><Service /></el-icon>
           </div>
           <div class="message-content">
             <div class="message-text" v-html="formatMessage(message.content)"></div>
@@ -24,7 +24,7 @@
 
         <div v-if="thinking" class="message assistant">
           <div class="message-avatar">
-            <el-icon :size="24"><Robot /></el-icon>
+            <el-icon :size="24"><Service /></el-icon>
           </div>
           <div class="message-content">
             <div class="thinking-dots">
@@ -59,7 +59,7 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
-import { ChatDotRound, User, Robot } from '@element-plus/icons-vue'
+import { ChatDotRound, User, Service } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const messages = ref([])
