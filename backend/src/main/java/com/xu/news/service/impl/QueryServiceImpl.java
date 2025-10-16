@@ -62,7 +62,10 @@ public class QueryServiceImpl implements QueryService {
                 .map(VectorStore.SearchResult::getVectorId)
                 .collect(Collectors.toList());
         
-        List<KnowledgeEntry> entries = knowledgeEntryService.findByVectorIds(vectorIds);
+        List<KnowledgeEntry> entries = new ArrayList<>();
+        if (!vectorIds.isEmpty()) {
+            entries = knowledgeEntryService.findByVectorIds(vectorIds);
+        }
 
         // Step 4: 构建响应的检索结果
         List<QueryResponse.RetrievedEntry> retrievedEntries = new ArrayList<>();
@@ -88,12 +91,21 @@ public class QueryServiceImpl implements QueryService {
         // Step 5: 使用LLM生成回答（如果需要）
         String answer = null;
         if (request.getNeedAnswer()) {
-            List<String> context = entries.stream()
-                    .map(e -> e.getTitle() + "\n" + e.getContent())
-                    .collect(Collectors.toList());
-            
-            log.debug("调用LLM生成回答，上下文文档数: {}", context.size());
-            answer = ollamaClient.generateAnswer(request.getQuery(), context);
+            if (entries.isEmpty()) {
+                // 知识库中没有相关内容，直接用LLM回答
+                log.debug("知识库中未找到相关内容，使用LLM直接回答");
+                answer = "抱歉，知识库中暂时没有找到与您问题相关的内容。这可能是因为：\n" +
+                         "1. 知识库还没有导入相关数据\n" +
+                         "2. 您的问题超出了当前知识库的范围\n\n" +
+                         "建议：请先导入相关的新闻或文档到知识库，或者等待RSS自动采集任务完成。";
+            } else {
+                List<String> context = entries.stream()
+                        .map(e -> e.getTitle() + "\n" + e.getContent())
+                        .collect(Collectors.toList());
+                
+                log.debug("调用LLM生成回答，上下文文档数: {}", context.size());
+                answer = ollamaClient.generateAnswer(request.getQuery(), context);
+            }
         }
 
         // Step 6: 保存查询历史
