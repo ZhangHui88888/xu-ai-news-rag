@@ -10,7 +10,7 @@
           :default-active="activeMenu"
           mode="horizontal"
           :ellipsis="false"
-          @select="handleMenuSelect"
+          :router="true"
         >
           <el-menu-item index="/">
             <el-icon><HomeFilled /></el-icon>
@@ -73,15 +73,6 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
-
-const handleMenuSelect = (index) => {
-  console.log('菜单点击:', index)
-  router.push(index).then(() => {
-    console.log('路由跳转成功:', index)
-  }).catch(err => {
-    console.error('路由跳转失败:', err)
-  })
-}
 
 const handleCommand = (command) => {
   if (command === 'logout') {
