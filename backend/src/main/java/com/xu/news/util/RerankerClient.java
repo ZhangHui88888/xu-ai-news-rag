@@ -6,10 +6,10 @@ import com.alibaba.fastjson2.JSONObject;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Component
-public class RerankerClient {
+public class RerankerClient implements InitializingBean {
 
     @Value("${reranker.base-url}")
     private String baseUrl;
@@ -54,8 +54,8 @@ public class RerankerClient {
     /**
      * Bean 初始化后调用，打印配置信息
      */
-    @PostConstruct
-    public void init() {
+    @Override
+    public void afterPropertiesSet() {
         log.info("========================================");
         log.info("🔧 重排模型客户端初始化");
         log.info("启用状态: {}", enabled);
