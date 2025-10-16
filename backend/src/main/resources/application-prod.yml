@@ -7,8 +7,16 @@ spring:
     hikari:
       maximum-pool-size: 50
 
+faiss:
+  index-path: ./data/faiss_index
+  dimension: 768
+
 ollama:
   base-url: ${OLLAMA_URL:http://ollama:11434}
+  model:
+    llm: qwen3:0.6b
+    embedding: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text:latest}
+  timeout: 60000
 
 n8n:
   base-url: ${N8N_URL:http://n8n:5678}

@@ -75,14 +75,14 @@ file:
 # FAISS向量库配置
 faiss:
   index-path: ./data/faiss_index
-  dimension: 384  # all-MiniLM-L6-v2 维度
+  dimension: 768  # nomic-embed-text 维度
 
 # Ollama配置
 ollama:
-  base-url: http://localhost:11434
+  base-url: ${OLLAMA_URL:http://localhost:11434}
   model:
-    llm: qwen2.5:3b
-    embedding: all-minilm-l6-v2
+    llm: qwen3:0.6b
+    embedding: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text:latest}
   timeout: 60000  # 60秒
 
 # n8n集成配置
