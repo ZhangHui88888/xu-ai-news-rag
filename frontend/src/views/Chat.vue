@@ -85,24 +85,47 @@ const handleSend = async () => {
   scrollToBottom()
 
   try {
-    // 调用n8n RAG工作流
+    // 调用n8n简化RAG工作流（支持联网搜索）
     const { askQuestion } = await import('@/api/query')
     const res = await askQuestion({ query: question })
     
+    console.log('n8n工作流响应:', res)
+    
     // 显示AI回复
     let aiContent = ''
-    if (res.data && res.data.answer) {
-      aiContent = res.data.answer
+    const responseData = res.data
+    
+    if (responseData && responseData.success) {
+      aiContent = responseData.answer || '未获取到答案'
+      
+      // 显示数据来源
+      if (responseData.source === 'local_knowledge') {
+        aiContent += '\n\n💡 来源：本地知识库'
+      } else if (responseData.source === 'web_search') {
+        aiContent += '\n\n🌐 来源：网络搜索（本地知识库暂无相关内容）'
+      }
       
       // 如果有检索到的文档，添加参考来源
-      if (res.data.retrievedDocs && res.data.retrievedDocs.length > 0) {
-        aiContent += '\n\n📚 参考来源：\n'
-        res.data.retrievedDocs.forEach((doc, idx) => {
-          aiContent += `${idx + 1}. ${doc.title} (相似度: ${(doc.similarity * 100).toFixed(1)}%)\n`
+      if (responseData.retrievedDocs && responseData.retrievedDocs.length > 0) {
+        aiContent += '\n\n📚 参考文章：\n'
+        responseData.retrievedDocs.forEach((doc, idx) => {
+          aiContent += `${idx + 1}. ${doc.title || '无标题'}`
+          if (doc.similarityScore) {
+            aiContent += ` (相似度: ${(doc.similarityScore * 100).toFixed(1)}%)`
+          }
+          aiContent += '\n'
+          if (doc.sourceUrl) {
+            aiContent += `   🔗 ${doc.sourceUrl}\n`
+          }
         })
       }
+      
+      // 显示响应时间
+      if (responseData.responseTimeMs) {
+        aiContent += `\n⏱️ 响应时间: ${responseData.responseTimeMs}ms`
+      }
     } else {
-      aiContent = '抱歉，暂时无法获取答案，请稍后重试。'
+      aiContent = '抱歉，暂时无法获取答案。请检查n8n服务是否正常运行。'
     }
     
     messages.value.push({
