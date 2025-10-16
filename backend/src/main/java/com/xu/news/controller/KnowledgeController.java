@@ -35,7 +35,12 @@ public class KnowledgeController {
     @PostMapping
     public Result<KnowledgeEntry> create(@RequestBody KnowledgeEntry entry, Authentication authentication) {
         try {
-            Long userId = (Long) authentication.getPrincipal();
+            // 获取用户ID，如果未认证则使用默认值1L
+            Long userId = 1L;
+            if (authentication != null && authentication.getPrincipal() != null) {
+                userId = (Long) authentication.getPrincipal();
+            }
+            
             entry.setCreatedBy(userId);
             KnowledgeEntry created = knowledgeEntryService.createWithVector(entry);
             return Result.success("创建成功", created);

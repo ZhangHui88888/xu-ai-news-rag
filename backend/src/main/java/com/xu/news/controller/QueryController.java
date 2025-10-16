@@ -30,7 +30,12 @@ public class QueryController {
     @PostMapping("/ask")
     public Result<QueryResponse> ask(@Valid @RequestBody QueryRequest request, Authentication authentication) {
         try {
-            Long userId = (Long) authentication.getPrincipal();
+            // 获取用户ID，如果未认证则使用默认值1L
+            Long userId = 1L;
+            if (authentication != null && authentication.getPrincipal() != null) {
+                userId = (Long) authentication.getPrincipal();
+            }
+            
             QueryResponse response = queryService.query(request, userId);
             return Result.success(response);
         } catch (Exception e) {
@@ -45,7 +50,12 @@ public class QueryController {
     @PostMapping("/search")
     public Result<QueryResponse> search(@Valid @RequestBody QueryRequest request, Authentication authentication) {
         try {
-            Long userId = (Long) authentication.getPrincipal();
+            // 获取用户ID，如果未认证则使用默认值1L
+            Long userId = 1L;
+            if (authentication != null && authentication.getPrincipal() != null) {
+                userId = (Long) authentication.getPrincipal();
+            }
+            
             QueryResponse response = queryService.semanticSearch(request, userId);
             return Result.success(response);
         } catch (Exception e) {
