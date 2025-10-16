@@ -85,6 +85,15 @@ ollama:
     embedding: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text:latest}
   timeout: 60000  # 60秒
 
+# 重排模型配置 (Cherry Studio / SiliconFlow)
+reranker:
+  enabled: ${RERANKER_ENABLED:true}  # 是否启用重排功能
+  base-url: ${RERANKER_URL:https://api.siliconflow.cn}
+  api-key: ${RERANKER_API_KEY:}  # 请设置您的 Cherry Studio API Key
+  model: BAAI/bge-reranker-v2-m3
+  # 重排策略
+  candidate-multiplier: 4  # 初始召回数量 = topK * multiplier (例如: 5 * 4 = 20)
+
 # n8n集成配置
 n8n:
   base-url: http://localhost:5678
