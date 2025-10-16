@@ -1,0 +1,312 @@
+{
+  "name": "RAG智能问答工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-query",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "rag-query-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析查询请求\nconst body = $input.item.json.body;\n\nreturn {\n  query: body.query,\n  userId: body.userId,\n  topK: body.topK || 5,\n  useRerank: body.useRerank || false,\n  enableWebSearch: body.enableWebSearch !== false\n};"
+      },
+      "id": "parse-query",
+      "name": "解析查询",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.171.1:11434/api/embeddings",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "all-minilm-l6-v2"
+            },
+            {
+              "name": "prompt",
+              "value": "={{$json.query}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "vectorize-query",
+      "name": "查询向量化",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/query/search",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "queryVector",
+              "value": "={{JSON.stringify($json.embedding)}}"
+            },
+            {
+              "name": "topK",
+              "value": "={{$json.topK}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "vector-search",
+      "name": "向量检索",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.results.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-results",
+      "name": "检查结果",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 构建RAG prompt\nconst query = $input.item.json.query;\nconst results = $input.item.json.results;\n\n// 提取检索到的文档内容\nconst contextDocs = results.slice(0, 5).map((doc, idx) => \n  `[文档${idx + 1}] 标题: ${doc.title}\\n内容: ${doc.content.substring(0, 500)}\\n来源: ${doc.sourceUrl || '未知'}\\n相似度: ${doc.similarity.toFixed(3)}`\n).join('\\n\\n');\n\nconst ragPrompt = `你是一个专业的AI助手，请根据以下检索到的相关文档回答用户问题。\n\n用户问题：${query}\n\n相关文档：\n${contextDocs}\n\n请基于以上文档内容，用中文简洁准确地回答用户问题。如果文档中没有相关信息，请说明无法从提供的资料中找到答案。回答要有条理，可以引用文档编号。`;\n\nreturn {\n  query: query,\n  prompt: ragPrompt,\n  retrievedDocs: results,\n  userId: $input.item.json.userId\n};"
+      },
+      "id": "build-rag-prompt",
+      "name": "构建RAG提示",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.171.1:11434/api/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "qwen2.5:3b"
+            },
+            {
+              "name": "prompt",
+              "value": "={{$json.prompt}}"
+            },
+            {
+              "name": "stream",
+              "value": false
+            },
+            {
+              "name": "options",
+              "value": "={{ { \"temperature\": 0.7, \"top_p\": 0.9 } }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "generate-answer",
+      "name": "生成答案",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理AI生成的答案\nconst response = $input.item.json;\nconst metadata = $input.item.json;\n\nlet answer = '';\nif (response.response) {\n  answer = response.response.trim();\n} else if (response.message && response.message.content) {\n  answer = response.message.content.trim();\n}\n\nreturn {\n  query: metadata.query,\n  answer: answer,\n  retrievedDocs: metadata.retrievedDocs,\n  source: 'knowledge_base',\n  userId: metadata.userId,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "process-answer",
+      "name": "处理答案",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 知识库无结果，需要联网搜索\nconst query = $input.item.json.query;\nconst userId = $input.item.json.userId;\nconst enableWebSearch = $input.item.json.enableWebSearch;\n\nif (!enableWebSearch) {\n  return {\n    query: query,\n    answer: '抱歉，在本地知识库中没有找到相关信息，且联网搜索功能已关闭。',\n    retrievedDocs: [],\n    source: 'no_result',\n    userId: userId,\n    timestamp: new Date().toISOString()\n  };\n}\n\nreturn {\n  query: query,\n  userId: userId,\n  needsWebSearch: true\n};"
+      },
+      "id": "prepare-web-search",
+      "name": "准备联网搜索",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/query/web-search",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{$json.query}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "web-search",
+      "name": "联网搜索",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 合并结果\nconst localResult = $input.first();\nconst webResult = $input.last();\n\nif (webResult && webResult.json.answer) {\n  return webResult.json;\n}\n\nreturn localResult.json;"
+      },
+      "id": "merge-results",
+      "name": "合并结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "response",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2040, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "错误处理",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [1040, 600]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"message\": \"查询失败\", \"error\": $json.error?.message || 'Unknown error' } }}",
+        "responseCode": 500
+      },
+      "id": "error-response",
+      "name": "错误响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1240, 600]
+    }
+  ],
+  "connections": {
+    "Webhook触发": {
+      "main": [[{"node": "解析查询", "type": "main", "index": 0}]]
+    },
+    "解析查询": {
+      "main": [[{"node": "查询向量化", "type": "main", "index": 0}]]
+    },
+    "查询向量化": {
+      "main": [[{"node": "向量检索", "type": "main", "index": 0}]]
+    },
+    "向量检索": {
+      "main": [[{"node": "检查结果", "type": "main", "index": 0}]]
+    },
+    "检查结果": {
+      "main": [
+        [{"node": "构建RAG提示", "type": "main", "index": 0}],
+        [{"node": "准备联网搜索", "type": "main", "index": 0}]
+      ]
+    },
+    "构建RAG提示": {
+      "main": [[{"node": "生成答案", "type": "main", "index": 0}]]
+    },
+    "生成答案": {
+      "main": [[{"node": "处理答案", "type": "main", "index": 0}]]
+    },
+    "处理答案": {
+      "main": [[{"node": "合并结果", "type": "main", "index": 0}]]
+    },
+    "准备联网搜索": {
+      "main": [[{"node": "联网搜索", "type": "main", "index": 0}]]
+    },
+    "联网搜索": {
+      "main": [[{"node": "合并结果", "type": "main", "index": 0}]]
+    },
+    "合并结果": {
+      "main": [[{"node": "返回响应", "type": "main", "index": 0}]]
+    },
+    "错误处理": {
+      "main": [[{"node": "错误响应", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "rag",
+      "name": "RAG问答"
+    },
+    {
+      "id": "ai",
+      "name": "AI"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "instanceId": "xu-news-ai-rag"
+  }
+}
+

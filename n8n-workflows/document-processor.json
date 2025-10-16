@@ -1,0 +1,392 @@
+{
+  "name": "文档处理工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-document",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "process-document-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析文件上传请求\nconst body = $input.item.json.body;\nconst headers = $input.item.json.headers;\n\nreturn {\n  fileUrl: body.fileUrl,\n  fileName: body.fileName,\n  fileType: body.fileType,\n  userId: body.userId,\n  tags: body.tags || [],\n  contentType: headers['content-type'] || 'application/octet-stream'\n};"
+      },
+      "id": "parse-request",
+      "name": "解析请求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$json.fileUrl}}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-file",
+      "name": "下载文件",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.fileType}}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-file-type",
+      "name": "判断文件类型",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PDF文本提取（简化版，实际应使用pdf-parse库）\nconst fileData = $input.item.binary.data;\nconst metadata = $input.item.json;\n\n// 注意：n8n中需要安装pdf-parse模块才能真正解析PDF\n// 这里返回模拟结果，实际使用时需要调用后端API处理\n\nreturn {\n  fileName: metadata.fileName,\n  fileType: 'pdf',\n  content: '这是从PDF提取的文本内容（需要后端API支持）',\n  pageCount: 10,\n  userId: metadata.userId,\n  tags: metadata.tags,\n  extractedAt: new Date().toISOString(),\n  needsBackendProcessing: true,\n  fileUrl: metadata.fileUrl\n};"
+      },
+      "id": "extract-pdf",
+      "name": "提取PDF内容",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TXT文本提取\nconst fileData = $input.item.binary.data;\nconst metadata = $input.item.json;\n\n// 将buffer转为文本\nconst content = fileData.toString('utf-8');\n\nreturn {\n  fileName: metadata.fileName,\n  fileType: 'txt',\n  content: content,\n  userId: metadata.userId,\n  tags: metadata.tags,\n  extractedAt: new Date().toISOString()\n};"
+      },
+      "id": "extract-txt",
+      "name": "提取TXT内容",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Word文档提取（需要mammoth库）\nconst metadata = $input.item.json;\n\n// 实际使用时需要调用后端API处理\nreturn {\n  fileName: metadata.fileName,\n  fileType: 'docx',\n  content: '这是从Word文档提取的文本内容（需要后端API支持）',\n  userId: metadata.userId,\n  tags: metadata.tags,\n  extractedAt: new Date().toISOString(),\n  needsBackendProcessing: true,\n  fileUrl: metadata.fileUrl\n};"
+      },
+      "id": "extract-word",
+      "name": "提取Word内容",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{$json.needsBackendProcessing}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-backend-processing",
+      "name": "检查是否需要后端处理",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/knowledge/process-file",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fileUrl",
+              "value": "={{$json.fileUrl}}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{$json.fileName}}"
+            },
+            {
+              "name": "fileType",
+              "value": "={{$json.fileType}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "tags",
+              "value": "={{JSON.stringify($json.tags)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "call-backend-processor",
+      "name": "调用后端处理",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 对提取的内容进行分段处理\nconst content = $input.item.json.content;\nconst metadata = $input.item.json;\n\n// 按段落分割，每段不超过2000字符\nconst maxChunkSize = 2000;\nconst chunks = [];\n\nif (content.length <= maxChunkSize) {\n  chunks.push(content);\n} else {\n  // 按段落分割\n  const paragraphs = content.split(/\\n\\n|\\r\\n\\r\\n/);\n  let currentChunk = '';\n  \n  for (const para of paragraphs) {\n    if (currentChunk.length + para.length <= maxChunkSize) {\n      currentChunk += para + '\\n\\n';\n    } else {\n      if (currentChunk) chunks.push(currentChunk.trim());\n      currentChunk = para + '\\n\\n';\n    }\n  }\n  if (currentChunk) chunks.push(currentChunk.trim());\n}\n\n// 为每个分段创建一个条目\nreturn chunks.map((chunk, idx) => ({\n  json: {\n    title: `${metadata.fileName} - 第${idx + 1}部分`,\n    content: chunk,\n    fileName: metadata.fileName,\n    fileType: metadata.fileType,\n    chunkIndex: idx + 1,\n    totalChunks: chunks.length,\n    userId: metadata.userId,\n    tags: metadata.tags\n  }\n}));"
+      },
+      "id": "chunk-content",
+      "name": "内容分段",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.171.1:11434/api/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "qwen2.5:3b"
+            },
+            {
+              "name": "prompt",
+              "value": "=请为以下文档内容生成一个简洁的摘要（不超过200字）：\\n\\n{{$json.content}}\\n\\n只返回摘要内容。"
+            },
+            {
+              "name": "stream",
+              "value": false
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-summary",
+      "name": "生成摘要",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理摘要结果\nconst response = $input.item.json;\nconst metadata = $input.item.json;\n\nlet summary = '';\nif (response.response) {\n  summary = response.response.trim();\n} else if (response.message && response.message.content) {\n  summary = response.message.content.trim();\n}\n\nreturn {\n  title: metadata.title,\n  content: metadata.content,\n  summary: summary || metadata.content.substring(0, 200),\n  fileName: metadata.fileName,\n  fileType: metadata.fileType,\n  chunkIndex: metadata.chunkIndex,\n  totalChunks: metadata.totalChunks,\n  userId: metadata.userId,\n  tags: metadata.tags,\n  contentType: 'document',\n  dataSource: 'FileUpload'\n};"
+      },
+      "id": "process-summary",
+      "name": "处理摘要",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/knowledge/import",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "content",
+              "value": "={{$json.content}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{$json.summary}}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{$json.fileName}}"
+            },
+            {
+              "name": "tags",
+              "value": "={{JSON.stringify($json.tags)}}"
+            },
+            {
+              "name": "contentType",
+              "value": "={{$json.contentType}}"
+            },
+            {
+              "name": "dataSource",
+              "value": "={{$json.dataSource}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ fileType: $json.fileType, chunkIndex: $json.chunkIndex, totalChunks: $json.totalChunks }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-to-backend",
+      "name": "保存到后端",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2040, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 统计处理结果\nconst items = $input.all();\nconst successCount = items.filter(item => \n  item.json.statusCode === 200 || item.json.success === true\n).length;\n\nreturn {\n  timestamp: new Date().toISOString(),\n  totalChunks: items.length,\n  successCount: successCount,\n  failedCount: items.length - successCount,\n  message: `文档处理完成: 成功 ${successCount}/${items.length} 个分段`\n};"
+      },
+      "id": "summary-stats",
+      "name": "统计结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "response",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2440, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "错误处理",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [1440, 600]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"message\": \"文档处理失败\", \"error\": $json.error?.message || 'Unknown error' } }}",
+        "responseCode": 500
+      },
+      "id": "error-response",
+      "name": "错误响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 600]
+    }
+  ],
+  "connections": {
+    "Webhook触发": {
+      "main": [[{"node": "解析请求", "type": "main", "index": 0}]]
+    },
+    "解析请求": {
+      "main": [[{"node": "下载文件", "type": "main", "index": 0}]]
+    },
+    "下载文件": {
+      "main": [[{"node": "判断文件类型", "type": "main", "index": 0}]]
+    },
+    "判断文件类型": {
+      "main": [
+        [{"node": "提取PDF内容", "type": "main", "index": 0}],
+        [{"node": "提取TXT内容", "type": "main", "index": 0}],
+        [{"node": "提取Word内容", "type": "main", "index": 0}]
+      ]
+    },
+    "提取PDF内容": {
+      "main": [[{"node": "检查是否需要后端处理", "type": "main", "index": 0}]]
+    },
+    "提取TXT内容": {
+      "main": [[{"node": "检查是否需要后端处理", "type": "main", "index": 0}]]
+    },
+    "提取Word内容": {
+      "main": [[{"node": "检查是否需要后端处理", "type": "main", "index": 0}]]
+    },
+    "检查是否需要后端处理": {
+      "main": [
+        [{"node": "调用后端处理", "type": "main", "index": 0}],
+        [{"node": "内容分段", "type": "main", "index": 0}]
+      ]
+    },
+    "调用后端处理": {
+      "main": [[{"node": "保存到后端", "type": "main", "index": 0}]]
+    },
+    "内容分段": {
+      "main": [[{"node": "生成摘要", "type": "main", "index": 0}]]
+    },
+    "生成摘要": {
+      "main": [[{"node": "处理摘要", "type": "main", "index": 0}]]
+    },
+    "处理摘要": {
+      "main": [[{"node": "保存到后端", "type": "main", "index": 0}]]
+    },
+    "保存到后端": {
+      "main": [[{"node": "统计结果", "type": "main", "index": 0}]]
+    },
+    "统计结果": {
+      "main": [[{"node": "返回响应", "type": "main", "index": 0}]]
+    },
+    "错误处理": {
+      "main": [[{"node": "错误响应", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "document-processor",
+      "name": "文档处理"
+    },
+    {
+      "id": "ai",
+      "name": "AI"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "instanceId": "xu-news-ai-rag"
+  }
+}
+

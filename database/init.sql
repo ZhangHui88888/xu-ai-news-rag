@@ -151,11 +151,11 @@ CREATE TABLE IF NOT EXISTS `system_config` (
 
 -- 插入管理员账户 (密码: admin123)
 INSERT INTO `user` (`username`, `email`, `password_hash`, `full_name`, `role`, `status`) 
-VALUES ('admin', 'admin@example.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '管理员', 'admin', 1);
+VALUES ('admin', 'admin@example.com', '$2a$10$N9qo8uLOickgx2ZYc1hZG.s5Dj7TKVQnMUVx2mJBvwjfZbUMJ3r5q', '管理员', 'admin', 1);
 
 -- 插入测试用户 (密码: user123)
 INSERT INTO `user` (`username`, `email`, `password_hash`, `full_name`, `role`, `status`) 
-VALUES ('user', 'user@example.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '测试用户', 'user', 1);
+VALUES ('user', 'user@example.com', '$2a$10$dXJ3SW6G7P50lGGkR7gPQ.XFn7kzn.jYH7Y/nq7VYwZnOAz8SbBqi', '测试用户', 'user', 1);
 
 -- 插入初始标签
 INSERT INTO `tag` (`name`, `color`, `description`) VALUES

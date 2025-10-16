@@ -1,0 +1,199 @@
+{
+  "name": "邮件通知工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-notification",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "email-notification-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析通知请求\nconst body = $input.item.json.body;\n\nreturn {\n  type: body.type || 'info',\n  recipientEmail: body.recipientEmail,\n  subject: body.subject,\n  message: body.message,\n  data: body.data || {},\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse-request",
+      "name": "解析请求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{$json.type}}",
+              "rightValue": "knowledge_import",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-notification-type",
+      "name": "判断通知类型",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 构建知识入库通知邮件\nconst data = $input.item.json.data;\nconst recipient = $input.item.json.recipientEmail;\n\nconst emailSubject = `🎉 新内容已成功入库 - ${data.count || 1} 条`;\n\nconst emailBody = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }\n    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }\n    .item { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #667eea; }\n    .footer { text-align: center; color: #999; margin-top: 20px; font-size: 12px; }\n    .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 20px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📚 XU-News 知识库更新通知</h1>\n    </div>\n    <div class=\"content\">\n      <p>您好！</p>\n      <p>您的知识库已成功添加新内容：</p>\n      \n      <div class=\"item\">\n        <h3>${data.title || '新内容'}</h3>\n        <p><strong>来源：</strong>${data.source || '未知'}</p>\n        <p><strong>类型：</strong>${data.contentType || '未知'}</p>\n        <p><strong>入库时间：</strong>${new Date().toLocaleString('zh-CN')}</p>\n        ${data.summary ? `<p><strong>摘要：</strong>${data.summary}</p>` : ''}\n      </div>\n      \n      <p>您可以登录系统查看详细内容。</p>\n      \n      <a href=\"http://localhost:5173/knowledge\" class=\"button\">查看知识库</a>\n    </div>\n    <div class=\"footer\">\n      <p>此邮件由 XU-News AI RAG 系统自动发送，请勿回复。</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  to: recipient,\n  subject: emailSubject,\n  html: emailBody\n};"
+      },
+      "id": "build-knowledge-email",
+      "name": "构建知识入库邮件",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 构建采集失败通知邮件\nconst data = $input.item.json.data;\nconst recipient = $input.item.json.recipientEmail;\n\nconst emailSubject = `⚠️ 数据采集失败通知`;\n\nconst emailBody = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }\n    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }\n    .error { background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #f5576c; }\n    .footer { text-align: center; color: #999; margin-top: 20px; font-size: 12px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>⚠️ XU-News 采集任务失败</h1>\n    </div>\n    <div class=\"content\">\n      <p>您好！</p>\n      <p>数据采集任务遇到问题，请及时查看：</p>\n      \n      <div class=\"error\">\n        <p><strong>任务类型：</strong>${data.taskType || '未知'}</p>\n        <p><strong>失败时间：</strong>${new Date().toLocaleString('zh-CN')}</p>\n        <p><strong>错误信息：</strong>${data.errorMessage || '未知错误'}</p>\n        ${data.url ? `<p><strong>目标URL：</strong>${data.url}</p>` : ''}\n      </div>\n      \n      <p>建议检查：</p>\n      <ul>\n        <li>网络连接是否正常</li>\n        <li>目标网站是否可访问</li>\n        <li>采集规则是否需要更新</li>\n      </ul>\n    </div>\n    <div class=\"footer\">\n      <p>此邮件由 XU-News AI RAG 系统自动发送，请勿回复。</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  to: recipient,\n  subject: emailSubject,\n  html: emailBody\n};"
+      },
+      "id": "build-error-email",
+      "name": "构建错误通知邮件",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 构建每日摘要邮件\nconst data = $input.item.json.data;\nconst recipient = $input.item.json.recipientEmail;\n\nconst emailSubject = `📊 每日知识库摘要 - ${new Date().toLocaleDateString('zh-CN')}`;\n\nconst itemsList = (data.newItems || []).map(item => `\n  <div class=\"item\">\n    <h4>${item.title}</h4>\n    <p>${item.summary || item.content?.substring(0, 100) + '...'}</p>\n    <small>${item.source || '未知来源'} | ${item.createdAt || ''}</small>\n  </div>\n`).join('');\n\nconst emailBody = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }\n    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }\n    .stats { display: flex; justify-content: space-around; margin: 20px 0; }\n    .stat-item { text-align: center; background: white; padding: 15px; border-radius: 5px; flex: 1; margin: 0 5px; }\n    .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }\n    .item { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #667eea; }\n    .footer { text-align: center; color: #999; margin-top: 20px; font-size: 12px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📊 今日知识库摘要</h1>\n      <p>${new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>\n    </div>\n    <div class=\"content\">\n      <div class=\"stats\">\n        <div class=\"stat-item\">\n          <div class=\"stat-number\">${data.newCount || 0}</div>\n          <div>新增条目</div>\n        </div>\n        <div class=\"stat-item\">\n          <div class=\"stat-number\">${data.totalCount || 0}</div>\n          <div>总条目数</div>\n        </div>\n        <div class=\"stat-item\">\n          <div class=\"stat-number\">${data.queryCount || 0}</div>\n          <div>今日查询</div>\n        </div>\n      </div>\n      \n      <h3>📝 今日新增内容</h3>\n      ${itemsList || '<p>今天暂无新增内容</p>'}\n    </div>\n    <div class=\"footer\">\n      <p>此邮件由 XU-News AI RAG 系统自动发送，请勿回复。</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  to: recipient,\n  subject: emailSubject,\n  html: emailBody\n};"
+      },
+      "id": "build-digest-email",
+      "name": "构建每日摘要邮件",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@xu-news-rag.com",
+        "toEmail": "={{$json.to}}",
+        "subject": "={{$json.subject}}",
+        "emailType": "html",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "发送邮件",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1040, 300],
+      "credentials": {
+        "smtp": {
+          "id": "xu_news_smtp",
+          "name": "SMTP - XU News"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"邮件发送成功\" } }}"
+      },
+      "id": "response",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "错误处理",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [1040, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 记录错误日志\nconst error = $input.item.json.error;\n\nconsole.error('邮件发送失败:', error);\n\nreturn {\n  errorTime: new Date().toISOString(),\n  errorMessage: error?.message || 'Unknown error'\n};"
+      },
+      "id": "log-error",
+      "name": "记录错误",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"message\": \"邮件发送失败\", \"error\": $json.errorMessage } }}",
+        "responseCode": 500
+      },
+      "id": "error-response",
+      "name": "错误响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1440, 500]
+    }
+  ],
+  "connections": {
+    "Webhook触发": {
+      "main": [[{"node": "解析请求", "type": "main", "index": 0}]]
+    },
+    "解析请求": {
+      "main": [[{"node": "判断通知类型", "type": "main", "index": 0}]]
+    },
+    "判断通知类型": {
+      "main": [
+        [{"node": "构建知识入库邮件", "type": "main", "index": 0}],
+        [{"node": "构建错误通知邮件", "type": "main", "index": 0}],
+        [{"node": "构建每日摘要邮件", "type": "main", "index": 0}]
+      ]
+    },
+    "构建知识入库邮件": {
+      "main": [[{"node": "发送邮件", "type": "main", "index": 0}]]
+    },
+    "构建错误通知邮件": {
+      "main": [[{"node": "发送邮件", "type": "main", "index": 0}]]
+    },
+    "构建每日摘要邮件": {
+      "main": [[{"node": "发送邮件", "type": "main", "index": 0}]]
+    },
+    "发送邮件": {
+      "main": [[{"node": "返回响应", "type": "main", "index": 0}]]
+    },
+    "错误处理": {
+      "main": [[{"node": "记录错误", "type": "main", "index": 0}]]
+    },
+    "记录错误": {
+      "main": [[{"node": "错误响应", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "email",
+      "name": "邮件通知"
+    },
+    {
+      "id": "notification",
+      "name": "通知"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "instanceId": "xu-news-ai-rag"
+  }
+}
+

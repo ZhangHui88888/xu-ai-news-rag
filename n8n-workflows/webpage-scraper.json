@@ -1,0 +1,237 @@
+{
+  "name": "网页抓取工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-webpage",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "scrape-webpage-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析请求参数\nconst body = $input.item.json.body;\n\nreturn {\n  url: body.url,\n  selector: body.selector || 'body',\n  dataSourceId: body.dataSourceId,\n  userId: body.userId,\n  tags: body.tags || []\n};"
+      },
+      "id": "parse-request",
+      "name": "解析请求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$json.url}}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          }
+        }
+      },
+      "id": "fetch-webpage",
+      "name": "抓取网页",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 提取网页内容\nconst html = $input.item.json.body;\nconst url = $input.item.json.url;\nconst selector = $input.item.json.selector;\n\n// 提取标题\nconst titleMatch = html.match(/<title[^>]*>([^<]+)<\\/title>/i);\nconst title = titleMatch ? titleMatch[1].trim() : '未知标题';\n\n// 移除script、style等标签\nlet content = html\n  .replace(/<script[^>]*>.*?<\\/script>/gis, '')\n  .replace(/<style[^>]*>.*?<\\/style>/gis, '')\n  .replace(/<!--.*?-->/gs, '');\n\n// 根据selector提取内容\nif (selector !== 'body') {\n  const selectorRegex = new RegExp(`<${selector}[^>]*>(.*?)<\\/${selector}>`, 'is');\n  const match = content.match(selectorRegex);\n  if (match) {\n    content = match[1];\n  }\n}\n\n// 清理HTML标签\nconst cleanText = content\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .replace(/&nbsp;/g, ' ')\n  .replace(/&quot;/g, '\"')\n  .replace(/&amp;/g, '&')\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>')\n  .trim();\n\n// 限制长度\nconst maxLength = 10000;\nconst finalContent = cleanText.length > maxLength \n  ? cleanText.substring(0, maxLength) + '...'\n  : cleanText;\n\nreturn {\n  title: title,\n  content: finalContent,\n  sourceUrl: url,\n  scrapedAt: new Date().toISOString(),\n  dataSourceId: $input.item.json.dataSourceId,\n  userId: $input.item.json.userId,\n  tags: $input.item.json.tags\n};"
+      },
+      "id": "extract-content",
+      "name": "提取内容",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.171.1:11434/api/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "qwen2.5:3b"
+            },
+            {
+              "name": "prompt",
+              "value": "=请为以下网页内容生成一个简洁的中文摘要（不超过300字）：\\n\\n标题：{{$json.title}}\\n\\n内容：{{$json.content}}\\n\\n只返回摘要内容。"
+            },
+            {
+              "name": "stream",
+              "value": false
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-summary",
+      "name": "生成摘要",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理摘要结果\nconst response = $input.item.json;\nconst metadata = $input.item.json;\n\nlet summary = '';\nif (response.response) {\n  summary = response.response.trim();\n} else if (response.message && response.message.content) {\n  summary = response.message.content.trim();\n}\n\nreturn {\n  title: metadata.title,\n  content: metadata.content,\n  summary: summary || metadata.content.substring(0, 300),\n  sourceUrl: metadata.sourceUrl,\n  scrapedAt: metadata.scrapedAt,\n  dataSourceId: metadata.dataSourceId,\n  userId: metadata.userId,\n  tags: metadata.tags,\n  contentType: 'webpage',\n  dataSource: 'WebScraper'\n};"
+      },
+      "id": "process-summary",
+      "name": "处理摘要",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/knowledge/import",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "content",
+              "value": "={{$json.content}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{$json.summary}}"
+            },
+            {
+              "name": "sourceUrl",
+              "value": "={{$json.sourceUrl}}"
+            },
+            {
+              "name": "tags",
+              "value": "={{JSON.stringify($json.tags)}}"
+            },
+            {
+              "name": "contentType",
+              "value": "={{$json.contentType}}"
+            },
+            {
+              "name": "dataSource",
+              "value": "={{$json.dataSource}}"
+            },
+            {
+              "name": "dataSourceId",
+              "value": "={{$json.dataSourceId}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-to-backend",
+      "name": "保存到后端",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"网页抓取成功\", \"data\": $json } }}"
+      },
+      "id": "response",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "错误处理",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [840, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"message\": \"网页抓取失败\", \"error\": $json.error?.message || 'Unknown error' } }}",
+        "responseCode": 500
+      },
+      "id": "error-response",
+      "name": "错误响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 500]
+    }
+  ],
+  "connections": {
+    "Webhook触发": {
+      "main": [[{"node": "解析请求", "type": "main", "index": 0}]]
+    },
+    "解析请求": {
+      "main": [[{"node": "抓取网页", "type": "main", "index": 0}]]
+    },
+    "抓取网页": {
+      "main": [[{"node": "提取内容", "type": "main", "index": 0}]]
+    },
+    "提取内容": {
+      "main": [[{"node": "生成摘要", "type": "main", "index": 0}]]
+    },
+    "生成摘要": {
+      "main": [[{"node": "处理摘要", "type": "main", "index": 0}]]
+    },
+    "处理摘要": {
+      "main": [[{"node": "保存到后端", "type": "main", "index": 0}]]
+    },
+    "保存到后端": {
+      "main": [[{"node": "返回响应", "type": "main", "index": 0}]]
+    },
+    "错误处理": {
+      "main": [[{"node": "错误响应", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "web-scraper",
+      "name": "网页抓取"
+    },
+    {
+      "id": "ai",
+      "name": "AI处理"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "instanceId": "xu-news-ai-rag"
+  }
+}
+
