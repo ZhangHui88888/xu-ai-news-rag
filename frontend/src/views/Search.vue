@@ -79,34 +79,34 @@ const handleSearch = async () => {
   searched.value = true
 
   try {
-    // TODO: 调用搜索API
-    // const res = await searchKnowledge({ keyword: keyword.value, page: currentPage.value, size: pageSize.value })
+    // 调用后端搜索API
+    const { searchKnowledge } = await import('@/api/knowledge')
+    const res = await searchKnowledge({
+      keyword: keyword.value,
+      current: currentPage.value,
+      size: pageSize.value
+    })
     
-    // 模拟数据
-    setTimeout(() => {
-      results.value = [
-        {
-          id: 1,
-          title: '人工智能最新进展',
-          summary: 'AI技术在各个领域都取得了突破性进展...',
-          contentType: '新闻',
-          publishedAt: '2025-10-15',
-          sourceName: '科技日报'
-        },
-        {
-          id: 2,
-          title: '机器学习算法优化',
-          summary: '新的优化算法提升了模型训练效率...',
-          contentType: '文章',
-          publishedAt: '2025-10-14',
-          sourceName: '技术博客'
-        }
-      ]
-      total.value = 2
-      loading.value = false
-    }, 1000)
+    console.log('搜索结果:', res)
+    
+    if (res.data && res.data.code === 200 && res.data.data) {
+      const data = res.data.data
+      results.value = data.records || []
+      total.value = data.total || 0
+      
+      if (results.value.length === 0) {
+        ElMessage.info('没有找到相关结果')
+      }
+    } else {
+      results.value = []
+      total.value = 0
+      ElMessage.warning('未找到匹配的内容')
+    }
+    
+    loading.value = false
   } catch (error) {
-    ElMessage.error('搜索失败')
+    console.error('搜索失败:', error)
+    ElMessage.error('搜索失败: ' + (error.message || '请稍后重试'))
     loading.value = false
   }
 }

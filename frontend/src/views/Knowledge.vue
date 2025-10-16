@@ -143,36 +143,29 @@ onMounted(() => {
 const loadData = async () => {
   loading.value = true
   try {
-    // TODO: 调用API
-    // const res = await getKnowledgeList({ page: currentPage.value, size: pageSize.value, keyword: searchKeyword.value })
+    // 调用后端API获取知识库列表
+    const { getKnowledgeList } = await import('@/api/knowledge')
+    const res = await getKnowledgeList({ 
+      page: currentPage.value, 
+      size: pageSize.value, 
+      keyword: searchKeyword.value 
+    })
     
-    // 模拟数据
-    setTimeout(() => {
-      tableData.value = [
-        {
-          id: 1,
-          title: '人工智能技术发展报告',
-          contentType: '文档',
-          sourceName: '上传',
-          author: 'Admin',
-          publishedAt: '2025-10-15',
-          viewCount: 45
-        },
-        {
-          id: 2,
-          title: 'Vue3开发指南',
-          contentType: '文章',
-          sourceName: '技术博客',
-          author: 'Tech Writer',
-          publishedAt: '2025-10-14',
-          viewCount: 128
-        }
-      ]
-      total.value = 2
-      loading.value = false
-    }, 500)
+    console.log('知识库列表:', res)
+    
+    if (res.data && res.data.code === 200 && res.data.data) {
+      const data = res.data.data
+      tableData.value = data.records || []
+      total.value = data.total || 0
+    } else {
+      tableData.value = []
+      total.value = 0
+    }
+    
+    loading.value = false
   } catch (error) {
-    ElMessage.error('加载失败')
+    console.error('加载失败:', error)
+    ElMessage.error('加载失败: ' + (error.message || '请稍后重试'))
     loading.value = false
   }
 }

@@ -5,8 +5,8 @@
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [240, 300],
-      "id": "manual-trigger",
+      "position": [0, 0],
+      "id": "5281fd69-72f3-4243-9bc6-d253150c28ba",
       "name": "手动触发"
     },
     {
@@ -15,8 +15,8 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300],
-      "id": "rss-sources",
+      "position": [224, 0],
+      "id": "38c368be-4bc9-4d46-8467-2b8178de1984",
       "name": "RSS源列表"
     },
     {
@@ -26,8 +26,8 @@
       },
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.1,
-      "position": [680, 300],
-      "id": "rss-reader",
+      "position": [448, 0],
+      "id": "c631f1e3-e0d6-42b5-83a6-721b7f9c6f1a",
       "name": "读取RSS"
     },
     {
@@ -39,8 +39,8 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 300],
-      "id": "fetch-html",
+      "position": [672, 0],
+      "id": "1ea4b23b-aebc-447c-add1-32e20171552a",
       "name": "获取HTML"
     },
     {
@@ -50,17 +50,15 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300],
-      "id": "extract-content",
+      "position": [880, 0],
+      "id": "3610424b-d740-46d5-8f59-091f9158df7d",
       "name": "提取内容"
     },
     {
       "parameters": {
         "method": "POST",
         "url": "http://192.168.171.1:11434/api/generate",
-        "authentication": "none",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -83,8 +81,8 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300],
-      "id": "ai-summary",
+      "position": [1104, 0],
+      "id": "4f27cdcf-d92e-4ce0-b3dd-b903f7c199ec",
       "name": "AI生成摘要"
     },
     {
@@ -94,26 +92,25 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300],
-      "id": "process-result",
+      "position": [1328, 0],
+      "id": "e3516f2c-a1f2-4861-a599-470c9ed545aa",
       "name": "处理结果"
     },
     {
       "parameters": {
         "method": "POST",
         "url": "http://backend:8080/api/knowledge/import",
-        "authentication": "none",
         "sendBody": true,
-        "contentType": "json",
-        "body": "={{ JSON.stringify($json) }}",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
         "options": {
           "timeout": 30000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 300],
-      "id": "save-backend",
+      "position": [1552, 0],
+      "id": "32ff88ec-b8f1-4235-90d3-2da767c2a305",
       "name": "保存到后端"
     },
     {
@@ -122,28 +119,28 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300],
-      "id": "stats",
+      "position": [1760, 0],
+      "id": "269e3de0-c582-4510-9fb6-6bf3f6ca4d2d",
       "name": "统计结果"
     },
     {
       "parameters": {
-        "jsCode": "// 收集采集的文章信息\nconst processedItems = $('处理结果').all();\nconst stats = $json;\n\n// 提取成功的文章\nconst articles = processedItems.map(item => ({\n  title: item.json.title || '无标题',\n  summary: item.json.summary || '无摘要',\n  sourceUrl: item.json.sourceUrl || '#',\n  publishedAt: item.json.publishedAt || '',\n  author: item.json.author || '未知'\n})).slice(0, 10);  // 最多显示10篇\n\nreturn {\n  stats: stats,\n  articles: articles,\n  totalArticles: processedItems.length\n};"
+        "jsCode": "// 收集采集的文章信息\nconst processedItems = $('处理结果').all();\nconst stats = $json;\n\n// 提取文章列表\nconst articles = processedItems.map(item => ({\n  title: item.json.title || '无标题',\n  summary: item.json.summary || '无摘要',\n  sourceUrl: item.json.sourceUrl || '#',\n  publishedAt: item.json.publishedAt || '',\n  author: item.json.author || '未知'\n})).slice(0, 10);  // 最多显示10篇\n\nconsole.log('收集到的文章数:', articles.length);\n\nreturn {\n  stats: stats,\n  articles: articles,\n  totalArticles: processedItems.length\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2200, 300],
-      "id": "collect-articles",
+      "position": [1960, 0],
+      "id": "collect-articles-info",
       "name": "收集文章信息"
     },
     {
       "parameters": {
-        "jsCode": "// 构建HTML邮件内容\nconst data = $json;\nconst stats = data.stats;\nconst articles = data.articles;\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <style>\n    body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f5f7fa; padding: 20px; }\n    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 28px; }\n    .stats { padding: 20px; background: #ecf5ff; display: flex; justify-content: space-around; }\n    .stat-item { text-align: center; }\n    .stat-number { font-size: 32px; font-weight: bold; color: #409eff; }\n    .stat-label { color: #666; margin-top: 5px; }\n    .articles { padding: 20px; }\n    .article-item { border-left: 4px solid #409eff; padding: 15px; margin-bottom: 15px; background: #f9f9f9; }\n    .article-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 8px; }\n    .article-title a { color: #409eff; text-decoration: none; }\n    .article-summary { color: #666; line-height: 1.6; margin-bottom: 8px; }\n    .article-meta { font-size: 12px; color: #999; }\n    .footer { padding: 20px; text-align: center; color: #999; border-top: 1px solid #eee; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📰 XU-News AI-RAG 采集报告</h1>\n      <p style=\"margin: 10px 0 0; opacity: 0.9;\">${new Date().toLocaleString('zh-CN')}</p>\n    </div>\n    \n    <div class=\"stats\">\n      <div class=\"stat-item\">\n        <div class=\"stat-number\">${stats.total}</div>\n        <div class=\"stat-label\">处理总数</div>\n      </div>\n      <div class=\"stat-item\">\n        <div class=\"stat-number\" style=\"color: #67c23a;\">${stats.successCount}</div>\n        <div class=\"stat-label\">成功入库</div>\n      </div>\n      <div class=\"stat-item\">\n        <div class=\"stat-number\" style=\"color: #f56c6c;\">${stats.failedCount}</div>\n        <div class=\"stat-label\">失败数量</div>\n      </div>\n    </div>\n    \n    <div class=\"articles\">\n      <h2 style=\"color: #333; border-bottom: 2px solid #409eff; padding-bottom: 10px;\">📚 本次采集内容 (前${Math.min(articles.length, 10)}篇)</h2>\n      ${articles.map((article, index) => `\n        <div class=\"article-item\">\n          <div class=\"article-title\">\n            ${index + 1}. <a href=\"${article.sourceUrl}\" target=\"_blank\">${article.title}</a>\n          </div>\n          <div class=\"article-summary\">${article.summary}</div>\n          <div class=\"article-meta\">\n            👤 ${article.author} | 📅 ${new Date(article.publishedAt).toLocaleString('zh-CN')}\n          </div>\n        </div>\n      `).join('')}\n    </div>\n    \n    <div class=\"footer\">\n      <p>🤖 XU-News AI-RAG 自动化新闻采集系统</p>\n      <p>访问系统: <a href=\"http://192.168.171.128:5173\">http://192.168.171.128:5173</a></p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  html: html,\n  subject: `📰 RSS采集报告 - 成功${stats.successCount}条 | ${new Date().toLocaleDateString('zh-CN')}`,\n  stats: stats\n};"
+        "jsCode": "// 构建HTML邮件内容\nconst data = $json;\nconst stats = data.stats;\nconst articles = data.articles;\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <style>\n    body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f5f7fa; padding: 20px; margin: 0; }\n    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 28px; }\n    .stats { padding: 20px; background: #ecf5ff; display: flex; justify-content: space-around; }\n    .stat-item { text-align: center; }\n    .stat-number { font-size: 32px; font-weight: bold; color: #409eff; }\n    .stat-label { color: #666; margin-top: 5px; }\n    .articles { padding: 20px; }\n    .article-item { border-left: 4px solid #409eff; padding: 15px; margin-bottom: 15px; background: #f9f9f9; border-radius: 4px; }\n    .article-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 8px; }\n    .article-title a { color: #409eff; text-decoration: none; }\n    .article-title a:hover { text-decoration: underline; }\n    .article-summary { color: #666; line-height: 1.6; margin-bottom: 8px; }\n    .article-meta { font-size: 12px; color: #999; }\n    .footer { padding: 20px; text-align: center; color: #999; border-top: 1px solid #eee; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📰 XU-News AI-RAG 采集报告</h1>\n      <p style=\"margin: 10px 0 0; opacity: 0.9;\">${new Date().toLocaleString('zh-CN')}</p>\n    </div>\n    \n    <div class=\"stats\">\n      <div class=\"stat-item\">\n        <div class=\"stat-number\">${stats.total}</div>\n        <div class=\"stat-label\">处理总数</div>\n      </div>\n      <div class=\"stat-item\">\n        <div class=\"stat-number\" style=\"color: #67c23a;\">${stats.successCount}</div>\n        <div class=\"stat-label\">成功入库</div>\n      </div>\n      <div class=\"stat-item\">\n        <div class=\"stat-number\" style=\"color: #f56c6c;\">${stats.failedCount}</div>\n        <div class=\"stat-label\">失败数量</div>\n      </div>\n    </div>\n    \n    <div class=\"articles\">\n      <h2 style=\"color: #333; border-bottom: 2px solid #409eff; padding-bottom: 10px; margin-top: 0;\">📚 本次采集内容 (共${articles.length}篇)</h2>\n      ${articles.map((article, index) => `\n        <div class=\"article-item\">\n          <div class=\"article-title\">\n            ${index + 1}. <a href=\"${article.sourceUrl}\" target=\"_blank\">${article.title}</a>\n          </div>\n          <div class=\"article-summary\">${article.summary}</div>\n          <div class=\"article-meta\">\n            👤 ${article.author} | 📅 ${new Date(article.publishedAt).toLocaleString('zh-CN')}\n          </div>\n        </div>\n      `).join('')}\n    </div>\n    \n    <div class=\"footer\">\n      <p>🤖 XU-News AI-RAG 自动化新闻采集系统</p>\n      <p>访问系统: <a href=\"http://192.168.171.128:5173\" style=\"color: #409eff;\">http://192.168.171.128:5173</a></p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  html: html,\n  subject: `📰 RSS采集报告 - 成功${stats.successCount}条 | ${new Date().toLocaleDateString('zh-CN')}`,\n  stats: stats,\n  articleCount: articles.length\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 300],
-      "id": "build-email-html",
+      "position": [2160, 0],
+      "id": "build-html-email",
       "name": "构建HTML邮件"
     },
     {
@@ -157,13 +154,13 @@
       },
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [2600, 300],
-      "id": "send-email",
+      "position": [2360, 0],
+      "id": "send-email-notification",
       "name": "发送邮件",
       "credentials": {
         "smtp": {
-          "id": "smtp-account",
-          "name": "SMTP account"
+          "id": "smtp-qq",
+          "name": "QQ邮箱SMTP"
         }
       }
     }

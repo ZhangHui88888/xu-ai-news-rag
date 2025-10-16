@@ -30,6 +30,38 @@ public class KnowledgeController {
     private KnowledgeEntryService knowledgeEntryService;
 
     /**
+     * 获取知识库列表（分页）
+     */
+    @GetMapping("/list")
+    public Result<PageResult<KnowledgeEntry>> list(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String keyword) {
+        try {
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<KnowledgeEntry> pageObj = 
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+            
+            com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeEntry> wrapper = 
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+            
+            if (keyword != null && !keyword.isEmpty()) {
+                wrapper.like("title", keyword).or().like("content", keyword);
+            }
+            
+            wrapper.eq("deleted", 0);
+            wrapper.orderByDesc("created_at");
+            
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<KnowledgeEntry> result = 
+                knowledgeEntryService.page(pageObj, wrapper);
+            
+            return Result.success(PageResult.from(result));
+        } catch (Exception e) {
+            log.error("获取知识库列表失败: {}", e.getMessage(), e);
+            return Result.error("获取列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 创建知识条目
      */
     @PostMapping
@@ -98,6 +130,42 @@ public class KnowledgeController {
         } catch (Exception e) {
             log.error("删除知识条目失败: {}", e.getMessage(), e);
             return Result.error("删除失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 上传文件并导入知识库
+     */
+    @PostMapping("/upload")
+    public Result<KnowledgeEntry> upload(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            Authentication authentication) {
+        try {
+            // 获取用户ID
+            Long userId = 1L;
+            if (authentication != null && authentication.getPrincipal() != null) {
+                userId = (Long) authentication.getPrincipal();
+            }
+            
+            // 保存文件到临时目录
+            String uploadDir = "./uploads";
+            java.io.File dir = new java.io.File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            
+            String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            java.io.File dest = new java.io.File(uploadDir, filename);
+            file.transferTo(dest);
+            
+            // 从文件创建知识条目
+            KnowledgeEntry entry = knowledgeEntryService.createFromFile(dest, userId);
+            
+            log.info("文件上传成功: {}, 知识条目ID: {}", filename, entry.getId());
+            return Result.success("上传成功", entry);
+        } catch (Exception e) {
+            log.error("文件上传失败: {}", e.getMessage(), e);
+            return Result.error("上传失败: " + e.getMessage());
         }
     }
 

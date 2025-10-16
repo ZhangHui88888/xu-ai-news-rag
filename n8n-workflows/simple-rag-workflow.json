@@ -1,0 +1,194 @@
+{
+  "name": "简化RAG问答工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "simple-rag",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 保存原始请求数据\nconst input = $json;\n\nconsole.log('=== Webhook原始输入 ===');\nconsole.log('完整数据:', input);\nconsole.log('body:', input.body);\n\n// 提取query和userId\nconst query = input.body?.query || input.query || '';\nconst userId = input.body?.userId || input.userId || 1;\nconst topK = input.body?.topK || input.topK || 5;\n\nconsole.log('提取的query:', query);\n\n// 返回给后端的数据\nreturn {\n  query: query,\n  userId: userId,\n  topK: topK,\n  needAnswer: true,\n  similarityThreshold: 0.5,\n  _originalQuery: query,\n  _originalUserId: userId\n};"
+      },
+      "id": "save-original-request",
+      "name": "保存原始请求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/query/ask",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "call-backend-rag",
+      "name": "调用后端RAG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 从输入获取之前保存的原始query\nconst backendResponse = $json;\nconst inputData = $input.first().json;\n\nconsole.log('=== 合并节点 ===');\nconsole.log('输入数据:', inputData);\nconsole.log('后端响应:', backendResponse);\n\nconst originalQuery = inputData._originalQuery || '';\nconst userId = inputData._originalUserId || 1;\n\nconsole.log('提取的originalQuery:', originalQuery);\n\nreturn {\n  ...backendResponse,\n  _query: originalQuery,\n  _userId: userId\n};"
+      },
+      "id": "merge-query-response",
+      "name": "合并query和响应",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 检查是否有结果\nconst response = $json;\nconst originalQuery = response._query;\n\nconsole.log('检查结果 - 原始问题:', originalQuery);\n\n// 检查知识库是否为空\nif (response.data && response.data.retrievedEntries && response.data.retrievedEntries.length > 0) {\n  // 有结果，直接返回\n  return { \n    hasLocalResult: true, \n    query: originalQuery,\n    backendData: response.data \n  };\n}\n\n// 知识库为空，需要联网搜索\nreturn { \n  hasLocalResult: false, \n  originalQuery: originalQuery, \n  userId: response._userId || 1 \n};"
+      },
+      "id": "check-local-result",
+      "name": "检查本地结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasLocalResult}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-if-has-result",
+      "name": "是否有本地结果",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 返回本地RAG结果\nconst response = $json;\nreturn {\n  success: true,\n  query: response.data?.query || '',\n  answer: response.data?.answer || '',\n  retrievedDocs: response.data?.retrievedEntries || [],\n  source: 'local_knowledge',\n  responseTimeMs: response.data?.responseTimeMs || 0\n};"
+      },
+      "id": "format-local-response",
+      "name": "格式化本地结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 知识库无结果，准备LLM直接回答\nconst query = $json.originalQuery;\n\nconsole.log('知识库无结果，LLM直接回答问题:', query);\n\nreturn {\n  query: query,\n  prompt: `你是一个有帮助的AI助手。用户问了一个问题，但本地知识库中暂时没有相关信息。\\n\\n请基于你的知识回答以下问题（用中文）：\\n\\n${query}\\n\\n如果这个问题需要最新信息或你不确定答案，请说明本地知识库暂无相关内容，建议用户导入相关资料或等待RSS自动采集。`\n};"
+      },
+      "id": "prepare-llm-answer",
+      "name": "准备LLM回答",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.171.1:11434/api/generate",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"qwen3:0.6b\", \"prompt\": $json.prompt, \"stream\": false, \"options\": { \"temperature\": 0.7 } } }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-llm-answer",
+      "name": "LLM直接回答",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 格式化LLM回答\nconst ollama = $json;\nconst query = $input.item.json.query;\n\nconsole.log('LLM回答:', ollama.response);\n\nreturn {\n  success: true,\n  query: query,\n  answer: (ollama.response || '未能生成答案') + '\\n\\n💡 提示：此回答基于AI模型的通用知识。建议导入相关新闻或文档到知识库以获得更准确的答案。',\n  retrievedDocs: [],\n  source: 'llm_direct',\n  responseTimeMs: 0\n};"
+      },
+      "id": "format-llm-response",
+      "name": "格式化LLM回答",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 400]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge",
+      "name": "合并",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1840, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "webhook-response",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2040, 300]
+    }
+  ],
+  "connections": {
+    "Webhook触发": {
+      "main": [[{"node": "保存原始请求", "type": "main", "index": 0}]]
+    },
+    "保存原始请求": {
+      "main": [[{"node": "调用后端RAG", "type": "main", "index": 0}]]
+    },
+    "调用后端RAG": {
+      "main": [[{"node": "合并query和响应", "type": "main", "index": 0}]]
+    },
+    "合并query和响应": {
+      "main": [[{"node": "检查本地结果", "type": "main", "index": 0}]]
+    },
+    "检查本地结果": {
+      "main": [[{"node": "是否有本地结果", "type": "main", "index": 0}]]
+    },
+    "是否有本地结果": {
+      "main": [
+        [{"node": "格式化本地结果", "type": "main", "index": 0}],
+        [{"node": "准备LLM回答", "type": "main", "index": 0}]
+      ]
+    },
+    "格式化本地结果": {
+      "main": [[{"node": "合并", "type": "main", "index": 0}]]
+    },
+    "准备LLM回答": {
+      "main": [[{"node": "LLM直接回答", "type": "main", "index": 0}]]
+    },
+    "LLM直接回答": {
+      "main": [[{"node": "格式化LLM回答", "type": "main", "index": 0}]]
+    },
+    "格式化LLM回答": {
+      "main": [[{"node": "合并", "type": "main", "index": 1}]]
+    },
+    "合并": {
+      "main": [[{"node": "返回响应", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

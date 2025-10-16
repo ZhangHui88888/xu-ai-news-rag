@@ -102,7 +102,9 @@ const handleSend = async () => {
       if (responseData.source === 'local_knowledge') {
         aiContent += '\n\n💡 来源：本地知识库'
       } else if (responseData.source === 'web_search') {
-        aiContent += '\n\n🌐 来源：网络搜索（本地知识库暂无相关内容）'
+        aiContent += '\n\n🌐 来源：网络搜索'
+      } else if (responseData.source === 'llm_direct') {
+        aiContent += '\n\n🤖 来源：AI通用知识'
       }
       
       // 如果有检索到的文档，添加参考来源
