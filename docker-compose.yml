@@ -70,6 +70,8 @@ services:
       dockerfile: Dockerfile
     container_name: xu-news-backend
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - DB_HOST=mysql
@@ -77,7 +79,7 @@ services:
       - DB_NAME=xu_news_rag
       - DB_USERNAME=xu_news
       - DB_PASSWORD=xu_news_pass
-      - OLLAMA_URL=http://192.168.171.1:11434
+      - OLLAMA_URL=http://host.docker.internal:11434
       - OLLAMA_EMBEDDING_MODEL=nomic-embed-text:latest
       - N8N_URL=http://n8n:5678
       - JWT_SECRET=XU_NEWS_AI_RAG_SECRET_KEY_2025_VERY_LONG_AND_SECURE_STRING_FOR_JWT_TOKEN_GENERATION
