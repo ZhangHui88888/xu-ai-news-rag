@@ -171,6 +171,7 @@
     </dependencies>
 
     <build>
+        <finalName>news-ai-rag</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
