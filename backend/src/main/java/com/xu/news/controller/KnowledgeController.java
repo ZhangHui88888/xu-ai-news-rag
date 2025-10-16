@@ -1,5 +1,6 @@
 package com.xu.news.controller;
 
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xu.news.common.PageResult;
 import com.xu.news.common.Result;
@@ -10,6 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 知识库控制器
@@ -96,16 +100,38 @@ public class KnowledgeController {
      * N8N 导入知识条目（无需认证）
      */
     @PostMapping("/import")
-    public Result<KnowledgeEntry> importFromN8N(@RequestBody KnowledgeEntry entry) {
+    public Result<KnowledgeEntry> importFromN8N(@RequestBody Map<String, Object> rawData) {
         try {
-            log.info("N8N导入知识条目 - title: {}, content长度: {}, summary: {}, sourceUrl: {}, author: {}, tags: {}, contentType: {}", 
-                entry.getTitle(), 
-                entry.getContent() != null ? entry.getContent().length() : 0,
-                entry.getSummary(),
-                entry.getSourceUrl(), 
-                entry.getAuthor(),
-                entry.getTags(),
-                entry.getContentType());
+            log.info("N8N导入原始数据: {}", rawData);
+            
+            // 手动构建 KnowledgeEntry
+            KnowledgeEntry entry = new KnowledgeEntry();
+            entry.setTitle((String) rawData.get("title"));
+            entry.setContent((String) rawData.get("content"));
+            entry.setSummary((String) rawData.get("summary"));
+            entry.setSourceUrl((String) rawData.get("sourceUrl"));
+            entry.setAuthor((String) rawData.get("author"));
+            entry.setContentType((String) rawData.get("contentType"));
+            
+            // 处理 tags（可能是数组或字符串）
+            Object tagsObj = rawData.get("tags");
+            if (tagsObj != null) {
+                if (tagsObj instanceof String) {
+                    entry.setTags((String) tagsObj);
+                } else {
+                    entry.setTags(JSON.toJSONString(tagsObj));
+                }
+            }
+            
+            // 处理时间字段
+            Object publishedAtObj = rawData.get("publishedAt");
+            if (publishedAtObj instanceof String) {
+                try {
+                    entry.setPublishedAt(LocalDateTime.parse((String) publishedAtObj));
+                } catch (Exception e) {
+                    log.warn("时间格式解析失败: {}", publishedAtObj);
+                }
+            }
             
             // 验证必填字段
             if (entry.getTitle() == null || entry.getTitle().isEmpty()) {
@@ -115,8 +141,7 @@ public class KnowledgeController {
                 return Result.error("内容不能为空");
             }
             
-            // N8N 导入不需要用户ID
-            entry.setCreatedBy(1L); // 使用系统用户ID
+            entry.setCreatedBy(1L);
             KnowledgeEntry created = knowledgeEntryService.createWithVector(entry);
             return Result.success("导入成功", created);
         } catch (Exception e) {
