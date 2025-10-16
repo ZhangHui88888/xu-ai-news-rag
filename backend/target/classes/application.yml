@@ -1,0 +1,122 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  tomcat:
+    uri-encoding: UTF-8
+    threads:
+      max: 200
+      min-spare: 10
+
+spring:
+  application:
+    name: xu-news-ai-rag
+
+  # 数据源配置
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/xu_news_rag?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: "592802"
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      idle-timeout: 30000
+      pool-name: XuNewsHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+# MyBatis Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.xu.news.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT配置
+jwt:
+  secret: XU_NEWS_AI_RAG_SECRET_KEY_2025_VERY_LONG_AND_SECURE_STRING_FOR_JWT_TOKEN_GENERATION
+  expiration: 86400000  # 24小时 (毫秒)
+  header: Authorization
+  prefix: Bearer 
+
+# 文件存储配置
+file:
+  upload-dir: ./uploads
+  allowed-extensions: pdf,doc,docx,txt,md
+  max-size: 52428800  # 50MB
+
+# FAISS向量库配置
+faiss:
+  index-path: ./data/faiss_index
+  dimension: 384  # all-MiniLM-L6-v2 维度
+
+# Ollama配置
+ollama:
+  base-url: http://localhost:11434
+  model:
+    llm: qwen2.5:3b
+    embedding: all-minilm-l6-v2
+  timeout: 60000  # 60秒
+
+# n8n集成配置
+n8n:
+  base-url: http://localhost:5678
+  webhook-path: /webhook
+  api-key: ${N8N_API_KEY:}
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.xu.news: DEBUG
+    com.baomidou.mybatisplus: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n'
+  file:
+    name: ./logs/xu-news-rag.log
+    max-size: 100MB
+    max-history: 30
+
+# 应用配置
+app:
+  name: XU-News-AI-RAG
+  version: 1.0.0
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: '*'
+    allow-credentials: true
+  security:
+    ignore-urls:
+      - /auth/login
+      - /auth/register
+      - /health
+      - /actuator/**
+

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xu.news.mapper.KnowledgeEntryMapper">
+
+    <select id="fullTextSearch" resultType="com.xu.news.entity.KnowledgeEntry">
+        SELECT * FROM knowledge_entry
+        WHERE deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (
+                MATCH(title, content) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
+                OR title LIKE CONCAT('%', #{keyword}, '%')
+                OR content LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="sourceIds != null and sourceIds.size() > 0">
+            AND source_id IN
+            <foreach collection="sourceIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        <if test="tags != null and tags.size() > 0">
+            AND (
+            <foreach collection="tags" item="tag" separator=" OR ">
+                JSON_CONTAINS(tags, JSON_QUOTE(#{tag}))
+            </foreach>
+            )
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND published_at &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND published_at &lt;= #{endDate}
+        </if>
+        ORDER BY published_at DESC
+    </select>
+
+    <select id="findByVectorIds" resultType="com.xu.news.entity.KnowledgeEntry">
+        SELECT * FROM knowledge_entry
+        WHERE vector_id IN
+        <foreach collection="vectorIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND deleted = 0
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE knowledge_entry
+        SET view_count = view_count + 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>
+
