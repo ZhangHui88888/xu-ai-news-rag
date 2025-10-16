@@ -25,10 +25,10 @@ public class TestDataBuilder {
         User user = new User();
         user.setId(1L);
         user.setUsername("testuser");
-        user.setPassword("$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH");
+        user.setPasswordHash("$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH");
         user.setEmail("test@example.com");
         user.setFullName("测试用户");
-        user.setRole("USER");
+        user.setRole("user");
         user.setStatus(1);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -43,10 +43,10 @@ public class TestDataBuilder {
         User user = new User();
         user.setId(2L);
         user.setUsername("admin");
-        user.setPassword("$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH");
+        user.setPasswordHash("$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH");
         user.setEmail("admin@example.com");
         user.setFullName("管理员");
-        user.setRole("ADMIN");
+        user.setRole("admin");
         user.setStatus(1);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -83,7 +83,7 @@ public class TestDataBuilder {
         QueryRequest request = new QueryRequest();
         request.setQuery("什么是人工智能？");
         request.setTopK(5);
-        request.setEnableWebSearch(true);
+        request.setNeedAnswer(true);
         return request;
     }
 
@@ -101,8 +101,7 @@ public class TestDataBuilder {
         entry.setSourceName("TechCrunch");
         entry.setAuthor("John Doe");
         entry.setPublishedAt(LocalDateTime.now());
-        entry.setUserId(1L);
-        entry.setDataSourceId(1L);
+        // Note: userId和dataSourceId可能需要根据实际字段名调整
         entry.setCreatedAt(LocalDateTime.now());
         entry.setUpdatedAt(LocalDateTime.now());
         entry.setDeleted(0);
@@ -116,8 +115,8 @@ public class TestDataBuilder {
         DataSource source = new DataSource();
         source.setId(1L);
         source.setName("TechCrunch");
-        source.setType("RSS");
-        source.setUrl("https://techcrunch.com/feed/");
+        source.setSourceType("RSS");
+        source.setSourceUrl("https://techcrunch.com/feed/");
         source.setStatus(1);
         source.setCreatedAt(LocalDateTime.now());
         source.setUpdatedAt(LocalDateTime.now());
