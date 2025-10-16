@@ -98,7 +98,23 @@ public class KnowledgeController {
     @PostMapping("/import")
     public Result<KnowledgeEntry> importFromN8N(@RequestBody KnowledgeEntry entry) {
         try {
-            log.info("N8N导入知识条目: title={}, sourceUrl={}", entry.getTitle(), entry.getSourceUrl());
+            log.info("N8N导入知识条目 - title: {}, content长度: {}, summary: {}, sourceUrl: {}, author: {}, tags: {}, contentType: {}", 
+                entry.getTitle(), 
+                entry.getContent() != null ? entry.getContent().length() : 0,
+                entry.getSummary(),
+                entry.getSourceUrl(), 
+                entry.getAuthor(),
+                entry.getTags(),
+                entry.getContentType());
+            
+            // 验证必填字段
+            if (entry.getTitle() == null || entry.getTitle().isEmpty()) {
+                return Result.error("标题不能为空");
+            }
+            if (entry.getContent() == null || entry.getContent().isEmpty()) {
+                return Result.error("内容不能为空");
+            }
+            
             // N8N 导入不需要用户ID
             entry.setCreatedBy(1L); // 使用系统用户ID
             KnowledgeEntry created = knowledgeEntryService.createWithVector(entry);
