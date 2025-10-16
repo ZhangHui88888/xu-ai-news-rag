@@ -138,7 +138,14 @@ const handleLogin = async () => {
     const res = await login(form)
     
     if (res.code === 200) {
+      // 保存 token
       userStore.setToken(res.data.token)
+      
+      // 保存用户信息
+      userStore.setUserInfo({
+        username: form.username
+      })
+      
       ElMessage.success('登录成功')
       router.push('/')
     } else {
