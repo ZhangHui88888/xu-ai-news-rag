@@ -90,7 +90,7 @@ docker logs -f xu-news-n8n
 
 ### 2. 访问 n8n 管理界面
 
-打开浏览器访问: **http://localhost:5678**
+打开浏览器访问: **http://192.168.171.128:5678**
 
 默认登录凭据:
 - **用户名**: `admin`
@@ -174,7 +174,7 @@ VALUES
 #### 测试 RAG 问答
 
 ```bash
-curl -X POST http://localhost:5678/webhook/rag-query \
+curl -X POST http://192.168.171.128:5678/webhook/rag-query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "什么是人工智能?",
@@ -186,7 +186,7 @@ curl -X POST http://localhost:5678/webhook/rag-query \
 #### 测试网页抓取
 
 ```bash
-curl -X POST http://localhost:5678/webhook/scrape-webpage \
+curl -X POST http://192.168.171.128:5678/webhook/scrape-webpage \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://news.ycombinator.com/",
@@ -200,25 +200,25 @@ curl -X POST http://localhost:5678/webhook/scrape-webpage \
 ## 🔗 重要 URL 和端点
 
 ### n8n 管理界面
-- **URL**: http://localhost:5678
+- **URL**: http://192.168.171.128:5678
 - **账号**: admin / admin123
 
 ### Webhook 端点
 
 | 功能 | Webhook URL |
 |-----|-------------|
-| 网页抓取 | `http://localhost:5678/webhook/scrape-webpage` |
-| RAG 问答 | `http://localhost:5678/webhook/rag-query` |
-| 文档处理 | `http://localhost:5678/webhook/process-document` |
-| 邮件通知 | `http://localhost:5678/webhook/send-notification` |
+| 网页抓取 | `http://192.168.171.128:5678/webhook/scrape-webpage` |
+| RAG 问答 | `http://192.168.171.128:5678/webhook/rag-query` |
+| 文档处理 | `http://192.168.171.128:5678/webhook/process-document` |
+| 邮件通知 | `http://192.168.171.128:5678/webhook/send-notification` |
 
 ### 其他服务
 
 | 服务 | URL |
 |-----|-----|
-| 后端 API | http://localhost:8080 |
-| 前端界面 | http://localhost:5173 |
-| MySQL | localhost:3306 |
+| 后端 API | http://192.168.171.128:8080 |
+| 前端界面 | http://192.168.171.128:5173 |
+| MySQL | 192.168.171.128:3306 |
 | Ollama | http://192.168.171.1:11434 |
 
 ---
@@ -439,7 +439,7 @@ public class QueryController {
 
 ### 查看执行历史
 
-访问: http://localhost:5678/executions
+访问: http://192.168.171.128:5678/executions
 
 可以查看:
 - ✅ 成功执行的工作流
@@ -467,7 +467,7 @@ docker-compose ps
 
 ```bash
 # 测试 n8n 访问
-curl http://localhost:5678
+curl http://192.168.171.128:5678
 
 # 测试 Ollama
 curl http://192.168.171.1:11434/api/version
@@ -476,7 +476,7 @@ curl http://192.168.171.1:11434/api/version
 docker exec xu-news-mysql mysql -u xu_news -pxu_news_pass -e "SELECT 1"
 
 # 测试 Webhook
-curl -X POST http://localhost:5678/webhook-test/rag-query \
+curl -X POST http://192.168.171.128:5678/webhook-test/rag-query \
   -H "Content-Type: application/json" \
   -d '{"query":"test"}'
 ```
@@ -533,7 +533,7 @@ curl -X POST http://localhost:5678/webhook-test/rag-query \
 配置完成后,请检查:
 
 - [ ] n8n 服务正常运行 (`docker ps | grep n8n`)
-- [ ] 可以访问 n8n 管理界面 (http://localhost:5678)
+- [ ] 可以访问 n8n 管理界面 (http://192.168.171.128:5678)
 - [ ] 5 个工作流都已导入
 - [ ] MySQL 凭据配置正确
 - [ ] 所有工作流都已激活

@@ -91,5 +91,22 @@ public class KnowledgeController {
             return Result.error("删除失败: " + e.getMessage());
         }
     }
+
+    /**
+     * N8N 导入知识条目（无需认证）
+     */
+    @PostMapping("/import")
+    public Result<KnowledgeEntry> importFromN8N(@RequestBody KnowledgeEntry entry) {
+        try {
+            log.info("N8N导入知识条目: title={}, sourceUrl={}", entry.getTitle(), entry.getSourceUrl());
+            // N8N 导入不需要用户ID
+            entry.setCreatedBy(1L); // 使用系统用户ID
+            KnowledgeEntry created = knowledgeEntryService.createWithVector(entry);
+            return Result.success("导入成功", created);
+        } catch (Exception e) {
+            log.error("N8N导入知识条目失败: {}", e.getMessage(), e);
+            return Result.error("导入失败: " + e.getMessage());
+        }
+    }
 }
 
