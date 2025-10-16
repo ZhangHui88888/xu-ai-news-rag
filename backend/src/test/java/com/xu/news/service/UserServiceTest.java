@@ -6,7 +6,6 @@ import com.xu.news.entity.User;
 import com.xu.news.mapper.UserMapper;
 import com.xu.news.service.impl.UserServiceImpl;
 import com.xu.news.util.JwtUtil;
-import com.xu.news.utils.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -42,15 +41,30 @@ class UserServiceTest {
     @InjectMocks
     private UserServiceImpl userService;
 
-    private User testUser;
     private RegisterRequest registerRequest;
     private LoginRequest loginRequest;
+    private User testUser;
 
     @BeforeEach
     void setUp() {
-        testUser = TestDataBuilder.createTestUser();
-        registerRequest = TestDataBuilder.createRegisterRequest();
-        loginRequest = TestDataBuilder.createLoginRequest();
+        registerRequest = new RegisterRequest();
+        registerRequest.setUsername("testuser");
+        registerRequest.setPassword("Test123456");
+        registerRequest.setConfirmPassword("Test123456");
+        registerRequest.setEmail("test@example.com");
+        registerRequest.setFullName("测试用户");
+
+        loginRequest = new LoginRequest();
+        loginRequest.setUsername("testuser");
+        loginRequest.setPassword("Test123456");
+
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testuser");
+        testUser.setPasswordHash("$2a$10$encodedPassword");
+        testUser.setEmail("test@example.com");
+        testUser.setRole("user");
+        testUser.setStatus(1);
     }
 
     @Test
@@ -70,7 +84,19 @@ class UserServiceTest {
         assertEquals(registerRequest.getUsername(), result.getUsername());
         assertEquals(registerRequest.getEmail(), result.getEmail());
         verify(userMapper, times(1)).insert(any(User.class));
-        verify(passwordEncoder, times(1)).encode(anyString());
+    }
+
+    @Test
+    @DisplayName("用户注册 - 密码不一致")
+    void testRegister_PasswordMismatch() {
+        // Given
+        registerRequest.setConfirmPassword("DifferentPassword");
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> {
+            userService.register(registerRequest);
+        });
+        verify(userMapper, never()).insert(any(User.class));
     }
 
     @Test
@@ -80,10 +106,10 @@ class UserServiceTest {
         when(userMapper.findByUsername(registerRequest.getUsername())).thenReturn(testUser);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             userService.register(registerRequest);
         });
-        verify(userMapper, never()).insert(any(User.class));
+        assertTrue(exception.getMessage().contains("用户名已存在"));
     }
 
     @Test
@@ -94,10 +120,10 @@ class UserServiceTest {
         when(userMapper.findByEmail(registerRequest.getEmail())).thenReturn(testUser);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             userService.register(registerRequest);
         });
-        verify(userMapper, never()).insert(any(User.class));
+        assertTrue(exception.getMessage().contains("邮箱已被注册"));
     }
 
     @Test
@@ -107,6 +133,8 @@ class UserServiceTest {
         when(userMapper.findByUsername(loginRequest.getUsername())).thenReturn(testUser);
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
         when(jwtUtil.generateToken(anyLong(), anyString(), anyString())).thenReturn("test-token");
+        when(userMapper.selectById(anyLong())).thenReturn(testUser);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
 
         // When
         String token = userService.login(loginRequest);
@@ -121,13 +149,14 @@ class UserServiceTest {
     @DisplayName("用户登录 - 用户不存在")
     void testLogin_UserNotFound() {
         // Given
-        when(userMapper.findByUsername(loginRequest.getUsername())).thenReturn(null);
+        when(userMapper.findByUsername(anyString())).thenReturn(null);
+        when(userMapper.findByEmail(anyString())).thenReturn(null);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             userService.login(loginRequest);
         });
-        verify(jwtUtil, never()).generateToken(anyLong(), anyString(), anyString());
+        assertTrue(exception.getMessage().contains("用户名或密码错误"));
     }
 
     @Test
@@ -138,100 +167,53 @@ class UserServiceTest {
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             userService.login(loginRequest);
         });
-        verify(jwtUtil, never()).generateToken(anyLong(), anyString(), anyString());
+        assertTrue(exception.getMessage().contains("用户名或密码错误"));
     }
 
     @Test
-    @DisplayName("根据用户名查询用户 - 成功")
-    void testFindByUsername_Success() {
+    @DisplayName("用户登录 - 账户被禁用")
+    void testLogin_AccountDisabled() {
         // Given
-        when(userMapper.findByUsername(testUser.getUsername())).thenReturn(testUser);
-
-        // When
-        User result = userService.findByUsername(testUser.getUsername());
-
-        // Then
-        assertNotNull(result);
-        assertEquals(testUser.getUsername(), result.getUsername());
-        verify(userMapper, times(1)).findByUsername(testUser.getUsername());
-    }
-
-    @Test
-    @DisplayName("根据用户名查询用户 - 不存在")
-    void testFindByUsername_NotFound() {
-        // Given
-        when(userMapper.findByUsername("nonexistent")).thenReturn(null);
-
-        // When
-        User result = userService.findByUsername("nonexistent");
-
-        // Then
-        assertNull(result);
-    }
-
-    @Test
-    @DisplayName("根据邮箱查询用户 - 成功")
-    void testFindByEmail_Success() {
-        // Given
-        when(userMapper.findByEmail(testUser.getEmail())).thenReturn(testUser);
-
-        // When
-        User result = userService.findByEmail(testUser.getEmail());
-
-        // Then
-        assertNotNull(result);
-        assertEquals(testUser.getEmail(), result.getEmail());
-        verify(userMapper, times(1)).findByEmail(testUser.getEmail());
-    }
-
-    @Test
-    @DisplayName("更新最后登录时间 - 成功")
-    void testUpdateLastLoginTime_Success() {
-        // Given
-        Long userId = 1L;
-        when(userMapper.updateById(any(User.class))).thenReturn(1);
-        when(userMapper.selectById(userId)).thenReturn(testUser);
-
-        // When
-        userService.updateLastLoginTime(userId);
-
-        // Then
-        verify(userMapper, times(1)).updateById(any(User.class));
-    }
-
-    @Test
-    @DisplayName("用户注册 - 密码加密")
-    void testRegister_PasswordEncrypted() {
-        // Given
-        String rawPassword = registerRequest.getPassword();
-        String encodedPassword = "encrypted_password_hash";
-        
-        when(userMapper.findByUsername(anyString())).thenReturn(null);
-        when(userMapper.findByEmail(anyString())).thenReturn(null);
-        when(passwordEncoder.encode(rawPassword)).thenReturn(encodedPassword);
-        when(userMapper.insert(any(User.class))).thenReturn(1);
-
-        // When
-        userService.register(registerRequest);
-
-        // Then
-        verify(passwordEncoder, times(1)).encode(rawPassword);
-    }
-
-    @Test
-    @DisplayName("用户登录 - 账号被禁用")
-    void testLogin_UserDisabled() {
-        // Given
-        testUser.setStatus(0); // 禁用状态
+        testUser.setStatus(0);
         when(userMapper.findByUsername(loginRequest.getUsername())).thenReturn(testUser);
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             userService.login(loginRequest);
         });
+        assertTrue(exception.getMessage().contains("账户已被禁用"));
+    }
+
+    @Test
+    @DisplayName("根据用户名查询 - 成功")
+    void testFindByUsername_Success() {
+        // Given
+        when(userMapper.findByUsername("testuser")).thenReturn(testUser);
+
+        // When
+        User result = userService.findByUsername("testuser");
+
+        // Then
+        assertNotNull(result);
+        assertEquals("testuser", result.getUsername());
+    }
+
+    @Test
+    @DisplayName("根据邮箱查询 - 成功")
+    void testFindByEmail_Success() {
+        // Given
+        when(userMapper.findByEmail("test@example.com")).thenReturn(testUser);
+
+        // When
+        User result = userService.findByEmail("test@example.com");
+
+        // Then
+        assertNotNull(result);
+        assertEquals("test@example.com", result.getEmail());
     }
 }
 

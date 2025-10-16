@@ -61,6 +61,7 @@ public class TestDataBuilder {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("newuser");
         request.setPassword("Test123456");
+        request.setConfirmPassword("Test123456");
         request.setEmail("newuser@example.com");
         request.setFullName("新用户");
         return request;

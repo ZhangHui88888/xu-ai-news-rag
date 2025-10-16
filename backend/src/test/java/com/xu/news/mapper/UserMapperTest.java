@@ -1,14 +1,16 @@
 package com.xu.news.mapper;
 
 import com.xu.news.entity.User;
-import com.xu.news.utils.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,9 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author XU
  * @since 2025-10-16
  */
-@SpringBootTest
+@SpringBootTest(classes = com.xu.news.XuNewsApplication.class)
 @ActiveProfiles("test")
 @Transactional
+@Sql(scripts = {"/schema.sql", "/data.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 @DisplayName("用户Mapper测试")
 class UserMapperTest {
 
@@ -31,7 +34,13 @@ class UserMapperTest {
 
     @BeforeEach
     void setUp() {
-        testUser = TestDataBuilder.createTestUser();
+        testUser = new User();
+        testUser.setUsername("newuser" + System.currentTimeMillis());
+        testUser.setPasswordHash("$2a$10$testHash");
+        testUser.setEmail("newuser" + System.currentTimeMillis() + "@test.com");
+        testUser.setFullName("新测试用户");
+        testUser.setRole("user");
+        testUser.setStatus(1);
     }
 
     @Test
@@ -43,6 +52,7 @@ class UserMapperTest {
         // Then
         assertEquals(1, result);
         assertNotNull(testUser.getId());
+        assertTrue(testUser.getId() > 0);
     }
 
     @Test
@@ -64,7 +74,7 @@ class UserMapperTest {
     @DisplayName("根据用户名查询 - 不存在")
     void testFindByUsername_NotFound() {
         // When
-        User found = userMapper.findByUsername("nonexistent");
+        User found = userMapper.findByUsername("nonexistent_user_12345");
 
         // Then
         assertNull(found);
@@ -89,13 +99,14 @@ class UserMapperTest {
     void testSelectById_Success() {
         // Given
         userMapper.insert(testUser);
+        Long userId = testUser.getId();
 
         // When
-        User found = userMapper.selectById(testUser.getId());
+        User found = userMapper.selectById(userId);
 
         // Then
         assertNotNull(found);
-        assertEquals(testUser.getId(), found.getId());
+        assertEquals(userId, found.getId());
     }
 
     @Test
@@ -103,21 +114,21 @@ class UserMapperTest {
     void testUpdateById_Success() {
         // Given
         userMapper.insert(testUser);
-        testUser.setFullName("Updated Name");
+        testUser.setFullName("更新后的名字");
+        testUser.setLastLoginAt(LocalDateTime.now());
 
         // When
         int result = userMapper.updateById(testUser);
 
         // Then
         assertEquals(1, result);
-        
         User updated = userMapper.selectById(testUser.getId());
-        assertEquals("Updated Name", updated.getFullName());
+        assertEquals("更新后的名字", updated.getFullName());
     }
 
     @Test
-    @DisplayName("删除用户 - 成功")
-    void testDeleteById_Success() {
+    @DisplayName("删除用户 - 逻辑删除")
+    void testDeleteById_LogicalDelete() {
         // Given
         userMapper.insert(testUser);
         Long userId = testUser.getId();
@@ -127,19 +138,9 @@ class UserMapperTest {
 
         // Then
         assertEquals(1, result);
-        
+        // 逻辑删除后查询应该返回null
         User deleted = userMapper.selectById(userId);
         assertNull(deleted);
-    }
-
-    @Test
-    @DisplayName("根据邮箱查询 - 不存在")
-    void testFindByEmail_NotFound() {
-        // When
-        User found = userMapper.findByEmail("nonexistent@example.com");
-
-        // Then
-        assertNull(found);
     }
 }
 

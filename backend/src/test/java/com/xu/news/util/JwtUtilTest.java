@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author XU
  * @since 2025-10-16
  */
-@SpringBootTest
+@SpringBootTest(classes = com.xu.news.XuNewsApplication.class)
 @ActiveProfiles("test")
 @DisplayName("JWT工具类测试")
 class JwtUtilTest {
