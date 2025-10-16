@@ -16,6 +16,9 @@ BASE_URL="http://localhost:8080/api"
 PASS_COUNT=0
 FAIL_COUNT=0
 
+# curl命令别名，跳过代理访问localhost
+alias curl_local='curl --noproxy localhost,127.0.0.1'
+
 echo -e "${CYAN}=========================================${NC}"
 echo -e "${CYAN}XU-News-AI-RAG 集成测试${NC}"
 echo -e "${CYAN}=========================================${NC}"
@@ -32,11 +35,11 @@ test_api() {
     echo -e "${YELLOW}测试: $test_name${NC}"
     
     if [ "$method" = "POST" ]; then
-        response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL$endpoint" \
+        response=$(curl --noproxy localhost,127.0.0.1 -s -w "\n%{http_code}" -X POST "$BASE_URL$endpoint" \
             -H "Content-Type: application/json" \
             -d "$data")
     elif [ "$method" = "GET" ]; then
-        response=$(curl -s -w "\n%{http_code}" "$BASE_URL$endpoint")
+        response=$(curl --noproxy localhost,127.0.0.1 -s -w "\n%{http_code}" "$BASE_URL$endpoint")
     fi
     
     http_code=$(echo "$response" | tail -1)
@@ -71,7 +74,7 @@ test_api "用户登录" "POST" "/auth/login" \
   '{"username":"testuser","password":"Test123456"}'
 
 # 获取Token用于后续测试
-TOKEN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
+TOKEN_RESPONSE=$(curl --noproxy localhost,127.0.0.1 -s -X POST "$BASE_URL/auth/login" \
     -H "Content-Type: application/json" \
     -d '{"username":"testuser","password":"Test123456"}')
 
@@ -86,7 +89,7 @@ if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
     
     # 4. RAG查询
     echo -e "${YELLOW}测试: RAG查询${NC}"
-    curl -s -X POST "$BASE_URL/query/ask" \
+    curl --noproxy localhost,127.0.0.1 -s -X POST "$BASE_URL/query/ask" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $TOKEN" \
         -d '{"query":"什么是人工智能？","topK":5}' | jq . || echo "  ⚠️  Ollama服务可能未运行"
