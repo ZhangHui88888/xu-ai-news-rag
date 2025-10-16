@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # 后端测试服务
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    container_name: xu-news-backend-test
+    volumes:
+      # 挂载代码目录
+      - ./backend:/app
+      # 缓存Maven仓库
+      - maven-repo:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=test
+      - MAVEN_OPTS=-Xmx1024m
+    networks:
+      - test-network
+
+volumes:
+  maven-repo:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
+

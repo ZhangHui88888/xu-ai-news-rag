@@ -1,0 +1,162 @@
+{
+  "name": "RSS新闻采集工作流-最终版",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "id": "manual-trigger",
+      "name": "手动触发"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rssSources = [\n  {\n    id: 1,\n    name: '少数派',\n    url: 'https://sspai.com/feed'\n  }\n];\n\nreturn rssSources.map(source => ({ json: source }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "id": "rss-sources",
+      "name": "RSS源列表"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [680, 300],
+      "id": "rss-reader",
+      "name": "读取RSS"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.link}}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "id": "fetch-html",
+      "name": "获取HTML"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const httpResponse = $json;\nconst rssData = $('读取RSS').item.json;\n\nlet html = httpResponse.data || httpResponse.body || httpResponse.response || '';\nif (typeof html === 'object') {\n  html = html.body || html.data || JSON.stringify(html);\n}\nhtml = String(html || '');\n\nlet content = '';\nif (html && html.length > 100) {\n  let cleanHtml = html\n    .replace(/<script[^>]*>.*?<\\/script>/gis, '')\n    .replace(/<style[^>]*>.*?<\\/style>/gis, '')\n    .replace(/<!--.*?-->/gs, '');\n  \n  const articleMatch = cleanHtml.match(/<article[^>]*>(.*?)<\\/article>/is);\n  if (articleMatch) {\n    cleanHtml = articleMatch[1];\n  }\n  \n  content = cleanHtml\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&[a-z]+;/gi, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  if (content.length > 5000) {\n    content = content.substring(0, 5000) + '...';\n  }\n}\n\nif (!content || content.length < 50) {\n  content = rssData.description || rssData.contentSnippet || '无内容';\n}\n\nreturn {\n  title: rssData.title || '无标题',\n  content: content,\n  sourceUrl: rssData.link || '',\n  publishedAt: rssData.isoDate || rssData.pubDate || new Date().toISOString(),\n  author: rssData.creator || rssData.author || 'Unknown',\n  tags: rssData.categories || []\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300],
+      "id": "extract-content",
+      "name": "提取内容"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.171.1:11434/api/generate",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "qwen3:0.6b"
+            },
+            {
+              "name": "prompt",
+              "value": "=请为以下新闻生成一个简洁的中文摘要(不超过200字):\\n\\n标题:{{ $json.title }}\\n\\n内容:{{ $json.content }}\\n\\n只返回摘要内容,不要其他说明。"
+            },
+            {
+              "name": "stream",
+              "value": false
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "id": "ai-summary",
+      "name": "AI生成摘要"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const aiResponse = $json;\nconst originalData = $('提取内容').item.json;\n\nlet summary = '';\nif (aiResponse.response && typeof aiResponse.response === 'string') {\n  summary = aiResponse.response.trim();\n}\n\nreturn {\n  title: originalData.title,\n  content: originalData.content,\n  summary: summary,\n  sourceUrl: originalData.sourceUrl,\n  publishedAt: originalData.publishedAt,\n  author: originalData.author,\n  tags: originalData.tags || [],\n  contentType: 'news',\n  dataSource: 'RSS'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "id": "process-result",
+      "name": "处理结果"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8080/api/knowledge/import",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300],
+      "id": "save-backend",
+      "name": "保存到后端"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst successCount = items.filter(item => \n  (item.json.statusCode === 200 || item.json.code === 200)\n).length;\n\nreturn {\n  timestamp: new Date().toISOString(),\n  total: items.length,\n  successCount: successCount,\n  failedCount: items.length - successCount,\n  message: `RSS采集完成: 成功 ${successCount}/${items.length} 条`\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "id": "stats",
+      "name": "统计结果"
+    }
+  ],
+  "connections": {
+    "手动触发": {
+      "main": [[{"node": "RSS源列表", "type": "main", "index": 0}]]
+    },
+    "RSS源列表": {
+      "main": [[{"node": "读取RSS", "type": "main", "index": 0}]]
+    },
+    "读取RSS": {
+      "main": [[{"node": "获取HTML", "type": "main", "index": 0}]]
+    },
+    "获取HTML": {
+      "main": [[{"node": "提取内容", "type": "main", "index": 0}]]
+    },
+    "提取内容": {
+      "main": [[{"node": "AI生成摘要", "type": "main", "index": 0}]]
+    },
+    "AI生成摘要": {
+      "main": [[{"node": "处理结果", "type": "main", "index": 0}]]
+    },
+    "处理结果": {
+      "main": [[{"node": "保存到后端", "type": "main", "index": 0}]]
+    },
+    "保存到后端": {
+      "main": [[{"node": "统计结果", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
+

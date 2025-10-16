@@ -1,0 +1,28 @@
+# XU-News-AI-RAG Backend 测试专用Dockerfile
+# 包含完整的Maven环境用于运行测试
+
+FROM maven:3.9-eclipse-temurin-17
+
+WORKDIR /app
+
+# 安装必要的工具
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制项目文件
+COPY pom.xml .
+COPY src ./src
+
+# 预下载依赖（利用Docker缓存）
+RUN mvn dependency:go-offline -B || true
+
+# 设置环境变量
+ENV SPRING_PROFILES_ACTIVE=test
+ENV MAVEN_OPTS="-Xmx512m"
+
+# 默认命令：运行测试
+CMD ["mvn", "test", "jacoco:report"]
+
