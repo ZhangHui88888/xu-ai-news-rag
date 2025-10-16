@@ -81,6 +81,10 @@ services:
       - OLLAMA_EMBEDDING_MODEL=nomic-embed-text:latest
       - N8N_URL=http://n8n:5678
       - JWT_SECRET=XU_NEWS_AI_RAG_SECRET_KEY_2025_VERY_LONG_AND_SECURE_STRING_FOR_JWT_TOKEN_GENERATION
+      # 重排模型配置
+      - RERANKER_ENABLED=true
+      - RERANKER_URL=https://api.siliconflow.cn
+      - RERANKER_API_KEY=sk-rcnmpixqkdnfihlgiyqbjeqcolcaigumbczkvkkvgjuxuohu
       - TZ=Asia/Shanghai
     ports:
       - "8080:8080"
