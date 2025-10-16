@@ -12,7 +12,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  * @since 2025-10-16
  */
 @ExtendWith(SpringExtension.class)
-@SpringBootTest(classes = TestApplication.class)
+@SpringBootTest(classes = XuNewsApplication.class)
 @ActiveProfiles("test")
 public abstract class BaseTest {
     
