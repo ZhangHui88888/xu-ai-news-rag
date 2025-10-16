@@ -117,7 +117,7 @@ public class TestDataBuilder {
         source.setName("TechCrunch");
         source.setSourceType("RSS");
         source.setSourceUrl("https://techcrunch.com/feed/");
-        source.setStatus(1);
+        source.setEnabled(1);
         source.setCreatedAt(LocalDateTime.now());
         source.setUpdatedAt(LocalDateTime.now());
         source.setDeleted(0);
