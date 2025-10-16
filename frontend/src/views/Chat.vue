@@ -85,21 +85,37 @@ const handleSend = async () => {
   scrollToBottom()
 
   try {
-    // TODO: 调用AI问答API
-    // const res = await queryAI({ question })
+    // 调用n8n RAG工作流
+    const { askQuestion } = await import('@/api/query')
+    const res = await askQuestion({ query: question })
     
-    // 模拟AI回复
-    setTimeout(() => {
-      messages.value.push({
-        role: 'assistant',
-        content: `这是针对"${question}"的AI回复。\n\n基于知识库的内容，我为您找到了相关信息...`,
-        time: new Date()
-      })
-      thinking.value = false
-      scrollToBottom()
-    }, 2000)
+    // 显示AI回复
+    let aiContent = ''
+    if (res.data && res.data.answer) {
+      aiContent = res.data.answer
+      
+      // 如果有检索到的文档，添加参考来源
+      if (res.data.retrievedDocs && res.data.retrievedDocs.length > 0) {
+        aiContent += '\n\n📚 参考来源：\n'
+        res.data.retrievedDocs.forEach((doc, idx) => {
+          aiContent += `${idx + 1}. ${doc.title} (相似度: ${(doc.similarity * 100).toFixed(1)}%)\n`
+        })
+      }
+    } else {
+      aiContent = '抱歉，暂时无法获取答案，请稍后重试。'
+    }
+    
+    messages.value.push({
+      role: 'assistant',
+      content: aiContent,
+      time: new Date()
+    })
+    
+    thinking.value = false
+    scrollToBottom()
   } catch (error) {
-    ElMessage.error('发送失败，请重试')
+    console.error('AI问答失败:', error)
+    ElMessage.error('AI问答失败: ' + (error.message || '请检查n8n服务'))
     thinking.value = false
   }
 }
