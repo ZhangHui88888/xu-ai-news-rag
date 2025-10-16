@@ -75,7 +75,12 @@ const userStore = useUserStore()
 const activeMenu = computed(() => route.path)
 
 const handleMenuSelect = (index) => {
-  router.push(index)
+  console.log('菜单点击:', index)
+  router.push(index).then(() => {
+    console.log('路由跳转成功:', index)
+  }).catch(err => {
+    console.error('路由跳转失败:', err)
+  })
 }
 
 const handleCommand = (command) => {
