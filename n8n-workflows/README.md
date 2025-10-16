@@ -46,7 +46,7 @@ cd xu-ai-news-rag
 docker-compose up -d n8n
 
 # 访问 n8n 管理界面
-# http://localhost:5678
+# http://192.168.171.128:5678
 # 默认账号: admin / admin123
 ```
 
@@ -155,7 +155,7 @@ Webhook触发 → 解析请求 → 抓取网页 → 提取内容
 
 ```bash
 # POST 请求
-curl -X POST http://localhost:5678/webhook/scrape-webpage \
+curl -X POST http://192.168.171.128:5678/webhook/scrape-webpage \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com/article",
@@ -194,7 +194,7 @@ Webhook触发 → 解析查询 → 查询向量化 → 向量检索
 
 ```bash
 # POST 请求
-curl -X POST http://localhost:5678/webhook/rag-query \
+curl -X POST http://192.168.171.128:5678/webhook/rag-query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "什么是 RAG 技术?",
@@ -249,7 +249,7 @@ Webhook触发 → 解析请求 → 下载文件 → 判断文件类型
 
 ```bash
 # POST 请求
-curl -X POST http://localhost:5678/webhook/process-document \
+curl -X POST http://192.168.171.128:5678/webhook/process-document \
   -H "Content-Type: application/json" \
   -d '{
     "fileUrl": "http://backend:8080/uploads/document.pdf",
@@ -291,7 +291,7 @@ Webhook触发 → 解析请求 → 判断通知类型
 
 ```bash
 # 知识入库通知
-curl -X POST http://localhost:5678/webhook/send-notification \
+curl -X POST http://192.168.171.128:5678/webhook/send-notification \
   -H "Content-Type: application/json" \
   -d '{
     "type": "knowledge_import",
@@ -307,7 +307,7 @@ curl -X POST http://localhost:5678/webhook/send-notification \
   }'
 
 # 错误通知
-curl -X POST http://localhost:5678/webhook/send-notification \
+curl -X POST http://192.168.171.128:5678/webhook/send-notification \
   -H "Content-Type: application/json" \
   -d '{
     "type": "error",
@@ -321,7 +321,7 @@ curl -X POST http://localhost:5678/webhook/send-notification \
   }'
 
 # 每日摘要
-curl -X POST http://localhost:5678/webhook/send-notification \
+curl -X POST http://192.168.171.128:5678/webhook/send-notification \
   -H "Content-Type: application/json" \
   -d '{
     "type": "daily_digest",
@@ -350,10 +350,10 @@ curl -X POST http://localhost:5678/webhook/send-notification \
 
 | 工作流 | Webhook 路径 | 完整 URL |
 |-------|-------------|----------|
-| 网页抓取 | `/webhook/scrape-webpage` | `http://localhost:5678/webhook/scrape-webpage` |
-| RAG 问答 | `/webhook/rag-query` | `http://localhost:5678/webhook/rag-query` |
-| 文档处理 | `/webhook/process-document` | `http://localhost:5678/webhook/process-document` |
-| 邮件通知 | `/webhook/send-notification` | `http://localhost:5678/webhook/send-notification` |
+| 网页抓取 | `/webhook/scrape-webpage` | `http://192.168.171.128:5678/webhook/scrape-webpage` |
+| RAG 问答 | `/webhook/rag-query` | `http://192.168.171.128:5678/webhook/rag-query` |
+| 文档处理 | `/webhook/process-document` | `http://192.168.171.128:5678/webhook/process-document` |
+| 邮件通知 | `/webhook/send-notification` | `http://192.168.171.128:5678/webhook/send-notification` |
 
 ### 在 Spring Boot 中调用 Webhook
 
@@ -437,7 +437,35 @@ public class N8nService {
 2. 在后端添加唯一索引: `CREATE UNIQUE INDEX idx_source_url ON knowledge_entry(source_url)`
 3. 确认工作流中的去重检查节点运行正常
 
-### 5. Webhook 调用 404 错误
+### 5. 提取正文内容为空
+
+**问题**: RSS 新闻采集时，"提取正文内容"节点输出的 content 字段为空
+
+**原因分析**:
+- HTTP Request 节点返回的数据字段名称不一致
+- 不同版本的 n8n 可能使用 `data`、`body` 或 `response` 字段
+- 某些网站的 HTML 结构复杂，无法正确提取
+
+**解决方案**:
+1. **使用更新后的工作流**: 已修复的版本会自动尝试多个字段 (`data`、`body`、`response`)
+2. **检查 HTTP Request 节点输出**:
+   - 在 n8n 中点击"获取完整内容"节点查看输出
+   - 确认响应数据在哪个字段中
+3. **调试提取逻辑**:
+   ```javascript
+   // 在"提取正文内容"节点添加调试代码
+   console.log('可用字段:', Object.keys($input.item.json));
+   console.log('HTML 内容长度:', html.length);
+   ```
+4. **使用备用内容**: 如果无法提取完整内容，系统会自动使用 RSS 的 `description` 字段
+5. **调整 CSS 选择器**: 针对特定网站，修改提取逻辑以匹配其 HTML 结构
+
+**最佳实践**:
+- 建议测试时只导入 1-2 个 RSS 源
+- 选择结构清晰的新闻网站（如主流科技媒体）
+- 检查 RSS 源本身是否包含完整内容（有些 RSS 只提供摘要）
+
+### 6. Webhook 调用 404 错误
 
 **问题**: 调用 Webhook 返回 404
 

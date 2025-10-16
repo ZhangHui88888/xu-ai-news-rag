@@ -1,278 +1,143 @@
 {
-  "name": "RSS新闻采集工作流",
+  "name": "RSS新闻采集工作流-修复版",
   "nodes": [
     {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "0 */6 * * *"
-            }
-          ]
-        }
-      },
-      "id": "schedule-trigger",
-      "name": "定时触发-每6小时",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [240, 300]
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "manual-trigger",
+      "name": "手动触发"
     },
     {
       "parameters": {
-        "url": "=http://mysql:3306",
-        "options": {
-          "queryString": "SELECT * FROM data_source WHERE type='RSS' AND status=1"
-        }
+        "jsCode": "// RSS 源列表\nconst rssSources = [\n  {\n    id: 1,\n    name: '少数派',\n    url: 'https://sspai.com/feed'\n  }\n];\n\nreturn rssSources.map(source => ({ json: source }));"
       },
-      "id": "get-rss-sources",
-      "name": "获取RSS源配置",
-      "type": "n8n-nodes-base.mysql",
-      "typeVersion": 2.4,
-      "position": [440, 300],
-      "credentials": {
-        "mysql": {
-          "id": "xu_news_mysql",
-          "name": "MySQL - xu_news_rag"
-        }
-      }
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "id": "rss-sources",
+      "name": "RSS源列表"
     },
     {
       "parameters": {
         "url": "={{$json.url}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [400, 0],
+      "id": "rss-reader",
+      "name": "读取RSS"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.link}}",
         "options": {
           "timeout": 30000
         }
       },
-      "id": "rss-feed-reader",
-      "name": "读取RSS订阅",
-      "type": "n8n-nodes-base.rssFeedRead",
-      "typeVersion": 1.1,
-      "position": [640, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 检查内容是否已存在（去重）\nconst items = $input.all();\nconst newItems = [];\n\nfor (const item of items) {\n  const url = item.json.link;\n  const title = item.json.title;\n  \n  // 检查URL是否已存在于数据库（通过后端API）\n  // 这里简化处理，实际应该调用后端API检查\n  if (url && title) {\n    newItems.push({\n      json: {\n        title: title,\n        link: url,\n        description: item.json.description || '',\n        pubDate: item.json.pubDate || new Date().toISOString(),\n        creator: item.json.creator || 'Unknown',\n        categories: item.json.categories || []\n      }\n    });\n  }\n}\n\nreturn newItems;"
-      },
-      "id": "deduplication",
-      "name": "去重检查",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [840, 300]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "={{$json.link}}",
-        "options": {
-          "timeout": 30000,
-          "redirect": {
-            "redirect": {
-              "followRedirects": true,
-              "maxRedirects": 5
-            }
-          }
-        }
-      },
-      "id": "fetch-full-content",
-      "name": "获取完整内容",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1040, 300]
+      "position": [600, 0],
+      "id": "fetch-html",
+      "name": "获取HTML"
     },
     {
       "parameters": {
-        "jsCode": "// 使用正则和简单算法提取正文\nconst html = $input.item.json.body;\nconst metadata = $input.item.json;\n\n// 移除script和style标签\nlet content = html\n  .replace(/<script[^>]*>.*?<\\/script>/gis, '')\n  .replace(/<style[^>]*>.*?<\\/style>/gis, '')\n  .replace(/<!--.*?-->/gs, '');\n\n// 尝试提取article或main标签内容\nconst articleMatch = content.match(/<article[^>]*>(.*?)<\\/article>/is);\nif (articleMatch) {\n  content = articleMatch[1];\n} else {\n  const mainMatch = content.match(/<main[^>]*>(.*?)<\\/main>/is);\n  if (mainMatch) {\n    content = mainMatch[1];\n  }\n}\n\n// 移除所有HTML标签\nconst cleanText = content\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// 截取前5000字符作为内容\nconst maxLength = 5000;\nconst finalContent = cleanText.length > maxLength \n  ? cleanText.substring(0, maxLength) + '...'\n  : cleanText;\n\nreturn {\n  title: metadata.title,\n  content: finalContent,\n  sourceUrl: metadata.link,\n  publishedAt: metadata.pubDate,\n  author: metadata.creator,\n  tags: metadata.categories\n};"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const httpResponse = $json;\nconst rssData = $('读取RSS').item.json;\n\nlet html = httpResponse.data || httpResponse.body || httpResponse.response || '';\nif (typeof html === 'object') {\n  html = html.body || html.data || JSON.stringify(html);\n}\nhtml = String(html || '');\n\nlet content = '';\nif (html && html.length > 100) {\n  let cleanHtml = html\n    .replace(/<script[^>]*>.*?<\\/script>/gis, '')\n    .replace(/<style[^>]*>.*?<\\/style>/gis, '')\n    .replace(/<!--.*?-->/gs, '');\n  \n  const articleMatch = cleanHtml.match(/<article[^>]*>(.*?)<\\/article>/is);\n  if (articleMatch) {\n    cleanHtml = articleMatch[1];\n  }\n  \n  content = cleanHtml\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&[a-z]+;/gi, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  if (content.length > 5000) {\n    content = content.substring(0, 5000) + '...';\n  }\n}\n\nif (!content || content.length < 50) {\n  content = rssData.description || '无内容';\n}\n\nreturn {\n  title: rssData.title || '无标题',\n  content: content,\n  sourceUrl: rssData.link || '',\n  publishedAt: rssData.isoDate || rssData.pubDate || new Date().toISOString(),\n  author: rssData.creator || 'Unknown',\n  tags: rssData.categories || []\n};"
       },
-      "id": "extract-content",
-      "name": "提取正文内容",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1240, 300]
+      "position": [800, 0],
+      "id": "extract-content",
+      "name": "提取内容"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=http://192.168.171.1:11434/api/generate",
+        "url": "http://192.168.171.1:11434/api/generate",
         "sendBody": true,
-        "contentType": "json",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "model",
-              "value": "qwen2.5:3b"
-            },
-            {
-              "name": "prompt",
-              "value": "=请为以下新闻生成一个简洁的中文摘要（不超过200字）：\\n\\n标题：{{$json.title}}\\n\\n内容：{{$json.content}}\\n\\n只返回摘要内容，不要其他说明。"
-            },
-            {
-              "name": "stream",
-              "value": false
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen3:0.6b\",\n  \"prompt\": \"请为以下新闻生成一个简洁的中文摘要(不超过200字):\\n\\n标题:{{ $json.title }}\\n\\n内容:{{ $json.content }}\\n\\n只返回摘要内容,不要其他说明。\",\n  \"stream\": false\n}",
         "options": {
           "timeout": 60000
         }
       },
-      "id": "generate-summary",
-      "name": "AI生成摘要",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1440, 300]
+      "position": [1000, 0],
+      "id": "ai-summary",
+      "name": "AI生成摘要"
     },
     {
       "parameters": {
-        "jsCode": "// 解析Ollama返回的摘要\nconst response = $input.item.json;\nconst metadata = $input.item.json;\n\nlet summary = '';\nif (response.response) {\n  summary = response.response.trim();\n} else if (response.message && response.message.content) {\n  summary = response.message.content.trim();\n}\n\nreturn {\n  title: metadata.title,\n  content: metadata.content,\n  summary: summary || metadata.content.substring(0, 200),\n  sourceUrl: metadata.sourceUrl,\n  publishedAt: metadata.publishedAt,\n  author: metadata.author || 'Unknown',\n  tags: metadata.tags || [],\n  contentType: 'news',\n  dataSource: 'RSS'\n};"
+        "mode": "runOnceForEachItem",
+        "jsCode": "const aiResponse = $json;\nconst originalData = $('提取内容').item.json;\n\nlet summary = '';\nif (aiResponse.response && typeof aiResponse.response === 'string') {\n  summary = aiResponse.response.trim();\n}\n\nreturn {\n  title: originalData.title,\n  content: originalData.content,\n  summary: summary,\n  sourceUrl: originalData.sourceUrl,\n  publishedAt: originalData.publishedAt,\n  author: originalData.author,\n  tags: originalData.tags,\n  contentType: 'news',\n  dataSource: 'RSS'\n};"
       },
-      "id": "process-summary",
-      "name": "处理摘要结果",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1640, 300]
+      "position": [1200, 0],
+      "id": "process-result",
+      "name": "处理结果"
     },
     {
       "parameters": {
         "method": "POST",
         "url": "http://backend:8080/api/knowledge/import",
-        "authentication": "none",
         "sendBody": true,
-        "contentType": "json",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "title",
-              "value": "={{$json.title}}"
-            },
-            {
-              "name": "content",
-              "value": "={{$json.content}}"
-            },
-            {
-              "name": "summary",
-              "value": "={{$json.summary}}"
-            },
-            {
-              "name": "sourceUrl",
-              "value": "={{$json.sourceUrl}}"
-            },
-            {
-              "name": "author",
-              "value": "={{$json.author}}"
-            },
-            {
-              "name": "tags",
-              "value": "={{JSON.stringify($json.tags)}}"
-            },
-            {
-              "name": "contentType",
-              "value": "={{$json.contentType}}"
-            },
-            {
-              "name": "dataSource",
-              "value": "={{$json.dataSource}}"
-            },
-            {
-              "name": "publishedAt",
-              "value": "={{$json.publishedAt}}"
-            }
-          ]
-        },
-        "options": {}
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "save-to-backend",
-      "name": "保存到后端",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1840, 300]
+      "typeVersion": 2,
+      "position": [1400, 0],
+      "id": "save-backend",
+      "name": "保存到后端"
     },
     {
       "parameters": {
-        "jsCode": "// 统计处理结果\nconst items = $input.all();\nconst successCount = items.filter(item => \n  item.json.statusCode === 200 || item.json.success === true\n).length;\n\nreturn {\n  timestamp: new Date().toISOString(),\n  totalProcessed: items.length,\n  successCount: successCount,\n  failedCount: items.length - successCount,\n  message: `RSS新闻采集完成: 成功 ${successCount}/${items.length}`\n};"
+        "jsCode": "const items = $input.all();\nconst successCount = items.filter(item => item.json.success === true).length;\nconst failedCount = items.length - successCount;\n\nreturn {\n  timestamp: new Date().toISOString(),\n  total: items.length,\n  successCount: successCount,\n  failedCount: failedCount,\n  message: `RSS采集完成: 成功 ${successCount}/${items.length} 条`\n};"
       },
-      "id": "summary-stats",
-      "name": "统计结果",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2040, 300]
-    },
-    {
-      "parameters": {},
-      "id": "error-trigger",
-      "name": "错误处理",
-      "type": "n8n-nodes-base.errorTrigger",
-      "typeVersion": 1,
-      "position": [1240, 500]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 记录错误日志\nconst error = $input.item.json.error;\nconst execution = $input.item.json.execution;\n\nconsole.error('RSS采集工作流错误:', error);\n\nreturn {\n  errorTime: new Date().toISOString(),\n  errorMessage: error?.message || 'Unknown error',\n  errorStack: error?.stack || '',\n  executionId: execution?.id || 'unknown'\n};"
-      },
-      "id": "log-error",
-      "name": "记录错误",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1440, 500]
+      "position": [1600, 0],
+      "id": "stats",
+      "name": "统计结果"
     }
   ],
   "connections": {
-    "定时触发-每6小时": {
-      "main": [[{"node": "获取RSS源配置", "type": "main", "index": 0}]]
+    "手动触发": {
+      "main": [[{"node": "RSS源列表", "type": "main", "index": 0}]]
     },
-    "获取RSS源配置": {
-      "main": [[{"node": "读取RSS订阅", "type": "main", "index": 0}]]
+    "RSS源列表": {
+      "main": [[{"node": "读取RSS", "type": "main", "index": 0}]]
     },
-    "读取RSS订阅": {
-      "main": [[{"node": "去重检查", "type": "main", "index": 0}]]
+    "读取RSS": {
+      "main": [[{"node": "获取HTML", "type": "main", "index": 0}]]
     },
-    "去重检查": {
-      "main": [[{"node": "获取完整内容", "type": "main", "index": 0}]]
+    "获取HTML": {
+      "main": [[{"node": "提取内容", "type": "main", "index": 0}]]
     },
-    "获取完整内容": {
-      "main": [[{"node": "提取正文内容", "type": "main", "index": 0}]]
-    },
-    "提取正文内容": {
+    "提取内容": {
       "main": [[{"node": "AI生成摘要", "type": "main", "index": 0}]]
     },
     "AI生成摘要": {
-      "main": [[{"node": "处理摘要结果", "type": "main", "index": 0}]]
+      "main": [[{"node": "处理结果", "type": "main", "index": 0}]]
     },
-    "处理摘要结果": {
+    "处理结果": {
       "main": [[{"node": "保存到后端", "type": "main", "index": 0}]]
     },
     "保存到后端": {
       "main": [[{"node": "统计结果", "type": "main", "index": 0}]]
-    },
-    "错误处理": {
-      "main": [[{"node": "记录错误", "type": "main", "index": 0}]]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": ""
-  },
-  "staticData": null,
-  "tags": [
-    {
-      "id": "rss-collector",
-      "name": "RSS采集"
-    },
-    {
-      "id": "news",
-      "name": "新闻"
-    },
-    {
-      "id": "ai",
-      "name": "AI处理"
-    }
-  ],
-  "pinData": {},
-  "versionId": "1.0.0",
-  "meta": {
-    "instanceId": "xu-news-ai-rag"
-  }
+  "active": false,
+  "settings": {},
+  "tags": []
 }
 

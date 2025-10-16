@@ -33,7 +33,7 @@ docker logs -f xu-news-n8n
 
 #### 2. 访问管理界面
 
-打开浏览器访问: **http://localhost:5678**
+打开浏览器访问: **http://192.168.171.128:5678**
 
 默认登录凭据:
 - 用户名: `admin`
@@ -135,7 +135,7 @@ VALUES ('36氪', 'RSS', 'https://36kr.com/feed', 1, NOW(), NOW());
 
 ```bash
 # 抓取单个网页
-curl -X POST http://localhost:5678/webhook/scrape-webpage \
+curl -X POST http://192.168.171.128:5678/webhook/scrape-webpage \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://www.infoq.cn/article/xxx",
@@ -194,7 +194,7 @@ n8n:
 
 ```bash
 # 发起查询
-curl -X POST http://localhost:5678/webhook/rag-query \
+curl -X POST http://192.168.171.128:5678/webhook/rag-query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "什么是向量数据库?",
@@ -328,7 +328,7 @@ public class KnowledgeController {
 
 ```bash
 # 发送知识入库通知
-curl -X POST http://localhost:5678/webhook/send-notification \
+curl -X POST http://192.168.171.128:5678/webhook/send-notification \
   -H "Content-Type: application/json" \
   -d '{
     "type": "knowledge_import",
@@ -471,10 +471,10 @@ ollama serve
 
 ```bash
 # 测试 Webhook
-curl -v http://localhost:5678/webhook-test/test
+curl -v http://192.168.171.128:5678/webhook-test/test
 
 # 查看 n8n 执行历史
-# 访问: http://localhost:5678/executions
+# 访问: http://192.168.171.128:5678/executions
 ```
 
 ---
@@ -483,7 +483,7 @@ curl -v http://localhost:5678/webhook-test/test
 
 ### 查看执行历史
 
-访问: **http://localhost:5678/executions**
+访问: **http://192.168.171.128:5678/executions**
 
 可以查看:
 - ✅ 成功的执行
