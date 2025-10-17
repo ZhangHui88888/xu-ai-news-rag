@@ -75,6 +75,9 @@
 
     <!-- 数据表格 -->
     <el-card class="table-card">
+      <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
+        共 <strong>{{ total }}</strong> 条记录，当前显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, total) }} 条
+      </div>
       <el-table
         :data="tableData"
         :loading="loading"
@@ -112,17 +115,22 @@
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        v-if="total > 0"
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-        style="margin-top: 20px; text-align: right"
-      />
+      <div v-if="tableData.length === 0 && !loading" style="padding: 40px; text-align: center; color: #999;">
+        暂无数据
+      </div>
+
+      <div v-if="total > 0" style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          :current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+          background
+        />
+      </div>
     </el-card>
 
     <!-- 上传对话框 -->
@@ -293,9 +301,11 @@ const loadData = async () => {
       const data = res.data
       tableData.value = data.records || []
       total.value = data.total || 0
+      console.log('📊 数据加载成功 - 总数:', total.value, '当前页数据:', tableData.value.length)
     } else {
       tableData.value = []
       total.value = 0
+      console.log('❌ 数据加载失败或无数据')
     }
     
     loading.value = false

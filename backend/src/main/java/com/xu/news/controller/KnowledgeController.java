@@ -310,13 +310,26 @@ public class KnowledgeController {
             entry.setSourceName(sourceName);
             
             // 处理 tags（可能是数组或字符串）
+            // 只有当tags有实际内容时才设置，否则留空让AI自动生成
             Object tagsObj = rawData.get("tags");
             if (tagsObj != null) {
+                String tagsStr = null;
                 if (tagsObj instanceof String) {
-                    entry.setTags((String) tagsObj);
+                    tagsStr = (String) tagsObj;
                 } else {
-                    entry.setTags(JSON.toJSONString(tagsObj));
+                    tagsStr = JSON.toJSONString(tagsObj);
                 }
+                
+                // 只有当tags不为空且不是空数组时才设置
+                if (tagsStr != null && !tagsStr.trim().isEmpty() && 
+                    !tagsStr.equals("[]") && !tagsStr.equals("{}")) {
+                    entry.setTags(tagsStr);
+                    log.info("使用n8n提供的标签: {}", tagsStr);
+                } else {
+                    log.info("n8n未提供有效标签，将由AI自动生成");
+                }
+            } else {
+                log.info("n8n未提供标签，将由AI自动生成");
             }
             
             // 处理时间字段
