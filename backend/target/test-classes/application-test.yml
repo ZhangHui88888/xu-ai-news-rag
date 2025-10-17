@@ -75,6 +75,8 @@ reranker:
   base-url: http://localhost:8080
   api-key: test-key
   model: test-model
+  top-n: 5
+  candidate-multiplier: 4
 
 # 日志配置
 logging:
