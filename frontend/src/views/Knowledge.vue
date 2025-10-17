@@ -29,19 +29,18 @@
         :loading="loading"
         style="width: 100%"
       >
-        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="createdAt" label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatDateTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="title" label="标题" min-width="200" />
         <el-table-column prop="contentType" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag>{{ row.contentType }}</el-tag>
+            <el-tag>{{ row.contentType || '其他' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="sourceName" label="来源" width="150" />
-        <el-table-column prop="publishedAt" label="发布时间" width="120">
-          <template #default="{ row }">
-            {{ formatDate(row.publishedAt) }}
-          </template>
-        </el-table-column>
         <el-table-column prop="viewCount" label="浏览" width="80" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
@@ -93,11 +92,11 @@
       <div v-if="currentItem">
         <h2>{{ currentItem.title }}</h2>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="类型">{{ currentItem.contentType }}</el-descriptions-item>
-          <el-descriptions-item label="来源">{{ currentItem.sourceName }}</el-descriptions-item>
-          <el-descriptions-item label="作者">{{ currentItem.author }}</el-descriptions-item>
-          <el-descriptions-item label="发布时间">{{ formatDate(currentItem.publishedAt) }}</el-descriptions-item>
-          <el-descriptions-item label="浏览次数">{{ currentItem.viewCount }}</el-descriptions-item>
+          <el-descriptions-item label="类型">{{ currentItem.contentType || '其他' }}</el-descriptions-item>
+          <el-descriptions-item label="来源">{{ currentItem.sourceName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="作者">{{ currentItem.author || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDateTime(currentItem.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item label="浏览次数">{{ currentItem.viewCount || 0 }}</el-descriptions-item>
         </el-descriptions>
         <el-divider />
         <div class="content">
@@ -220,6 +219,18 @@ const handleUploadError = () => {
 const formatDate = (date) => {
   if (!date) return ''
   return new Date(date).toLocaleDateString('zh-CN')
+}
+
+const formatDateTime = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  return d.toLocaleString('zh-CN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
 }
 </script>
 
