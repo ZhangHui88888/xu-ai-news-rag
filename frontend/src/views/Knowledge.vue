@@ -119,11 +119,11 @@
         暂无数据
       </div>
 
-      <div v-if="total > 0" class="pagination-wrapper">
+      <div v-if="tableData.length > 0" class="pagination-wrapper">
         <el-pagination
           :current-page="currentPage"
           :page-size="pageSize"
-          :total="total"
+          :total="total || tableData.length"
           :page-sizes="[10, 20, 50, 100]"
           :pager-count="11"
           layout="prev, pager, next, sizes, jumper"

@@ -42,6 +42,8 @@ public class KnowledgeController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         try {
+            log.info("📋 获取知识库列表 - 页码:{}, 每页:{}, 关键词:{}, 类型:{}", page, size, keyword, contentType);
+            
             com.baomidou.mybatisplus.extension.plugins.pagination.Page<KnowledgeEntry> pageObj = 
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
             
@@ -72,7 +74,12 @@ public class KnowledgeController {
             com.baomidou.mybatisplus.extension.plugins.pagination.Page<KnowledgeEntry> result = 
                 knowledgeEntryService.page(pageObj, wrapper);
             
-            return Result.success(PageResult.from(result));
+            PageResult<KnowledgeEntry> pageResult = PageResult.from(result);
+            
+            log.info("✅ 查询成功 - 总数:{}, 当前页:{}, 返回记录数:{}", 
+                pageResult.getTotal(), pageResult.getCurrent(), pageResult.getRecords().size());
+            
+            return Result.success(pageResult);
         } catch (Exception e) {
             log.error("获取知识库列表失败: {}", e.getMessage(), e);
             return Result.error("获取列表失败: " + e.getMessage());
