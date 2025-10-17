@@ -75,7 +75,7 @@
 
     <!-- 数据表格 -->
     <el-card class="table-card">
-      <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
+      <div v-if="!loading && total > 0" style="margin-bottom: 10px; color: #666; font-size: 14px;">
         共 <strong>{{ total }}</strong> 条记录，当前显示第 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, total) }} 条
       </div>
       <el-table
@@ -119,13 +119,14 @@
         暂无数据
       </div>
 
-      <div v-if="total > 0" style="margin-top: 20px; display: flex; justify-content: flex-end;">
+      <div v-if="total > 0" class="pagination-wrapper">
         <el-pagination
           :current-page="currentPage"
           :page-size="pageSize"
           :total="total"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
+          :pager-count="11"
+          layout="prev, pager, next, sizes, jumper"
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
           background
@@ -297,15 +298,22 @@ const loadData = async () => {
     console.log('🔍 查询参数:', params)
     const res = await getKnowledgeList(params)
     
+    console.log('📦 完整响应数据:', res)
+    
     if (res && res.code === 200 && res.data) {
       const data = res.data
+      console.log('📋 分页数据:', data)
+      console.log('  - total:', data.total, '类型:', typeof data.total)
+      console.log('  - records长度:', data.records ? data.records.length : 0)
+      
       tableData.value = data.records || []
-      total.value = data.total || 0
+      total.value = Number(data.total) || 0
+      
       console.log('📊 数据加载成功 - 总数:', total.value, '当前页数据:', tableData.value.length)
     } else {
+      console.error('❌ 数据格式异常:', res)
       tableData.value = []
       total.value = 0
-      console.log('❌ 数据加载失败或无数据')
     }
     
     loading.value = false
@@ -541,5 +549,19 @@ const formatDateForAPI = (date) => {
   word-break: break-word;
   max-height: 400px;
   overflow-y: auto;
+}
+
+.pagination-wrapper {
+  margin-top: 20px;
+  padding: 20px 0;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #ebeef5;
+}
+
+.pagination-wrapper :deep(.el-pagination) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>
