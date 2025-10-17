@@ -37,7 +37,10 @@ public class KnowledgeController {
     public Result<PageResult<KnowledgeEntry>> list(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String contentType,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
         try {
             com.baomidou.mybatisplus.extension.plugins.pagination.Page<KnowledgeEntry> pageObj = 
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
@@ -45,8 +48,22 @@ public class KnowledgeController {
             com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<KnowledgeEntry> wrapper = 
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
             
+            // 关键词搜索
             if (keyword != null && !keyword.isEmpty()) {
-                wrapper.like("title", keyword).or().like("content", keyword);
+                wrapper.and(w -> w.like("title", keyword).or().like("content", keyword));
+            }
+            
+            // 类型筛选
+            if (contentType != null && !contentType.isEmpty()) {
+                wrapper.eq("content_type", contentType);
+            }
+            
+            // 时间范围筛选
+            if (startDate != null && !startDate.isEmpty()) {
+                wrapper.ge("created_at", startDate + " 00:00:00");
+            }
+            if (endDate != null && !endDate.isEmpty()) {
+                wrapper.le("created_at", endDate + " 23:59:59");
             }
             
             wrapper.eq("deleted", 0);
@@ -135,6 +152,105 @@ public class KnowledgeController {
     }
 
     /**
+     * 批量删除知识条目
+     */
+    @PostMapping("/batch-delete")
+    public Result<Map<String, Object>> batchDelete(@RequestBody Map<String, Object> params) {
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.List<Long> ids = (java.util.List<Long>) params.get("ids");
+            
+            if (ids == null || ids.isEmpty()) {
+                return Result.error("请选择要删除的条目");
+            }
+            
+            int successCount = 0;
+            int failCount = 0;
+            
+            for (Long id : ids) {
+                try {
+                    boolean success = knowledgeEntryService.deleteWithVector(id);
+                    if (success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (Exception e) {
+                    log.error("删除知识条目{}失败: {}", id, e.getMessage());
+                    failCount++;
+                }
+            }
+            
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("successCount", successCount);
+            result.put("failCount", failCount);
+            result.put("total", ids.size());
+            
+            if (failCount == 0) {
+                return Result.success("批量删除成功", result);
+            } else if (successCount == 0) {
+                return Result.error("批量删除失败");
+            } else {
+                return Result.success("部分删除成功", result);
+            }
+        } catch (Exception e) {
+            log.error("批量删除失败: {}", e.getMessage(), e);
+            return Result.error("批量删除失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新知识条目元数据
+     */
+    @PutMapping("/{id}")
+    public Result<KnowledgeEntry> update(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
+        try {
+            KnowledgeEntry entry = knowledgeEntryService.getById(id);
+            if (entry == null) {
+                return Result.notFound("知识条目不存在");
+            }
+            
+            // 更新允许修改的字段
+            if (updates.containsKey("title")) {
+                entry.setTitle((String) updates.get("title"));
+            }
+            if (updates.containsKey("summary")) {
+                entry.setSummary((String) updates.get("summary"));
+            }
+            if (updates.containsKey("sourceName")) {
+                entry.setSourceName((String) updates.get("sourceName"));
+            }
+            if (updates.containsKey("sourceUrl")) {
+                entry.setSourceUrl((String) updates.get("sourceUrl"));
+            }
+            if (updates.containsKey("author")) {
+                entry.setAuthor((String) updates.get("author"));
+            }
+            if (updates.containsKey("tags")) {
+                Object tagsObj = updates.get("tags");
+                if (tagsObj instanceof String) {
+                    entry.setTags((String) tagsObj);
+                } else {
+                    entry.setTags(JSON.toJSONString(tagsObj));
+                }
+            }
+            if (updates.containsKey("contentType")) {
+                entry.setContentType((String) updates.get("contentType"));
+            }
+            
+            boolean success = knowledgeEntryService.updateById(entry);
+            if (success) {
+                return Result.success("更新成功", entry);
+            } else {
+                return Result.error("更新失败");
+            }
+        } catch (Exception e) {
+            log.error("更新知识条目失败: {}", e.getMessage(), e);
+            return Result.error("更新失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 上传文件并导入知识库（文本内容保存到数据库，不保留原始文件）
      */
     @PostMapping("/upload")
@@ -185,6 +301,13 @@ public class KnowledgeController {
             entry.setSourceUrl((String) rawData.get("sourceUrl"));
             entry.setAuthor((String) rawData.get("author"));
             entry.setContentType((String) rawData.get("contentType"));
+            
+            // 设置来源名称，如果为空则使用默认值
+            String sourceName = (String) rawData.get("sourceName");
+            if (sourceName == null || sourceName.isEmpty()) {
+                sourceName = "n8n自动读取";
+            }
+            entry.setSourceName(sourceName);
             
             // 处理 tags（可能是数组或字符串）
             Object tagsObj = rawData.get("tags");

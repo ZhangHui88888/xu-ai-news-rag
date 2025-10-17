@@ -7,7 +7,7 @@
 
     <el-row :gutter="20" class="stats-row">
       <el-col :span="8">
-        <el-card class="stat-card">
+        <el-card class="stat-card" v-loading="loading">
           <div class="stat-icon" style="background: #409eff;">
             <el-icon :size="30"><Document /></el-icon>
           </div>
@@ -18,7 +18,7 @@
         </el-card>
       </el-col>
       <el-col :span="8">
-        <el-card class="stat-card">
+        <el-card class="stat-card" v-loading="loading">
           <div class="stat-icon" style="background: #67c23a;">
             <el-icon :size="30"><ChatDotRound /></el-icon>
           </div>
@@ -29,7 +29,7 @@
         </el-card>
       </el-col>
       <el-col :span="8">
-        <el-card class="stat-card">
+        <el-card class="stat-card" v-loading="loading">
           <div class="stat-icon" style="background: #e6a23c;">
             <el-icon :size="30"><User /></el-icon>
           </div>
@@ -73,6 +73,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Document, ChatDotRound, User, Search, FolderOpened } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { getStatistics } from '@/api/statistics'
 
 const stats = ref({
   knowledgeCount: 0,
@@ -80,13 +82,29 @@ const stats = ref({
   userCount: 0
 })
 
-onMounted(() => {
-  // TODO: 从API获取统计数据
-  stats.value = {
-    knowledgeCount: 128,
-    queryCount: 456,
-    userCount: 12
+const loading = ref(false)
+
+const loadStatistics = async () => {
+  loading.value = true
+  try {
+    const res = await getStatistics()
+    if (res && res.code === 200 && res.data) {
+      stats.value = {
+        knowledgeCount: res.data.knowledgeCount || 0,
+        queryCount: res.data.queryCount || 0,
+        userCount: res.data.userCount || 0
+      }
+    }
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+    ElMessage.error('加载统计数据失败')
+  } finally {
+    loading.value = false
   }
+}
+
+onMounted(() => {
+  loadStatistics()
 })
 </script>
 

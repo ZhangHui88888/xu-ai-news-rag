@@ -30,6 +30,22 @@ export function deleteKnowledge(id) {
   })
 }
 
+export function batchDeleteKnowledge(ids) {
+  return request({
+    url: '/knowledge/batch-delete',
+    method: 'post',
+    data: { ids }
+  })
+}
+
+export function updateKnowledge(id, data) {
+  return request({
+    url: `/knowledge/${id}`,
+    method: 'put',
+    data
+  })
+}
+
 export function uploadFile(formData) {
   return request({
     url: '/knowledge/upload',
