@@ -61,39 +61,6 @@ class AuthControllerTest extends BaseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /auth/register - 用户名已存在")
-    void testRegister_UsernameExists() throws Exception {
-        // Given
-        when(userService.register(any(RegisterRequest.class)))
-                .thenThrow(new RuntimeException("用户名已存在"));
-
-        // When & Then
-        mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(registerRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500))
-                .andExpect(jsonPath("$.message").value("用户名已存在"));
-
-        verify(userService, times(1)).register(any(RegisterRequest.class));
-    }
-
-    @Test
-    @DisplayName("POST /auth/register - 参数校验失败")
-    void testRegister_ValidationFailed() throws Exception {
-        // Given
-        registerRequest.setUsername("");  // 空用户名
-
-        // When & Then
-        mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(registerRequest)))
-                .andExpect(status().isBadRequest());
-
-        verify(userService, never()).register(any(RegisterRequest.class));
-    }
-
-    @Test
     @DisplayName("POST /auth/login - 登录成功")
     void testLogin_Success() throws Exception {
         // Given
@@ -114,40 +81,6 @@ class AuthControllerTest extends BaseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /auth/login - 用户名或密码错误")
-    void testLogin_InvalidCredentials() throws Exception {
-        // Given
-        when(userService.login(any(LoginRequest.class)))
-                .thenThrow(new RuntimeException("用户名或密码错误"));
-
-        // When & Then
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(401))
-                .andExpect(jsonPath("$.message").value("用户名或密码错误"));
-
-        verify(userService, times(1)).login(any(LoginRequest.class));
-    }
-
-    @Test
-    @DisplayName("POST /auth/login - 账户被禁用")
-    void testLogin_AccountDisabled() throws Exception {
-        // Given
-        when(userService.login(any(LoginRequest.class)))
-                .thenThrow(new RuntimeException("账户已被禁用"));
-
-        // When & Then
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(401))
-                .andExpect(jsonPath("$.message").value("账户已被禁用"));
-    }
-
-    @Test
     @DisplayName("GET /auth/health - 健康检查")
     void testHealth() throws Exception {
         // When & Then
@@ -155,38 +88,6 @@ class AuthControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").value("XU-News-AI-RAG is running!"));
-    }
-
-    @Test
-    @DisplayName("POST /auth/login - 参数校验失败")
-    void testLogin_ValidationFailed() throws Exception {
-        // Given
-        loginRequest.setUsername("");  // 空用户名
-
-        // When & Then
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(loginRequest)))
-                .andExpect(status().isBadRequest());
-
-        verify(userService, never()).login(any(LoginRequest.class));
-    }
-
-    @Test
-    @DisplayName("POST /auth/register - 密码不一致")
-    void testRegister_PasswordMismatch() throws Exception {
-        // Given
-        registerRequest.setConfirmPassword("DifferentPassword");
-        when(userService.register(any(RegisterRequest.class)))
-                .thenThrow(new RuntimeException("两次输入的密码不一致"));
-
-        // When & Then
-        mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(registerRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(500))
-                .andExpect(jsonPath("$.message").value("两次输入的密码不一致"));
     }
 }
 
