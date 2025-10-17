@@ -1,7 +1,7 @@
 -- H2 测试数据库初始化脚本（兼容H2语法）
 
--- 用户表
-CREATE TABLE IF NOT EXISTS user (
+-- 用户表（user是保留字，需要用引号）
+CREATE TABLE IF NOT EXISTS "user" (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
