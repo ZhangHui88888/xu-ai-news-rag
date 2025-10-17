@@ -158,7 +158,7 @@ class FileProcessorTest {
     void testExtractText_SpecialCharacters() throws IOException {
         // Given
         Path file = tempDir.resolve("special.txt");
-        String content = "包含特殊字符：@#$%^&*()，中文标点：""''。";
+        String content = "包含特殊字符：@#$%^&*()，中文标点符号测试。";
         Files.writeString(file, content);
 
         // When
