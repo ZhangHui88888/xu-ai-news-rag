@@ -158,7 +158,7 @@ exit
 创建 `backend/Dockerfile.test`:
 
 ```dockerfile
-FROM maven:3.8.6-openjdk-17-slim
+FROM maven:3.9-eclipse-temurin-17
 
 WORKDIR /app
 
