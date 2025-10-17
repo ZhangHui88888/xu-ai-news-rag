@@ -69,6 +69,13 @@ ollama:
     embedding: nomic-embed-text:latest
   timeout: 30000
 
+# Reranker配置（测试环境禁用）
+reranker:
+  enabled: false
+  base-url: http://localhost:8080
+  api-key: test-key
+  model: test-model
+
 # 日志配置
 logging:
   level:
