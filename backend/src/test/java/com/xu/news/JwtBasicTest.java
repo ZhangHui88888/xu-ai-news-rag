@@ -1,10 +1,12 @@
 package com.xu.news;
 
+import com.xu.news.config.TestConfiguration;
 import com.xu.news.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = com.xu.news.XuNewsApplication.class)
 @ActiveProfiles("test")
 @DisplayName("简单JWT测试")
+@Import(TestConfiguration.class)
 public class JwtBasicTest {
 
     @Autowired

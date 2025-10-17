@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("向量存储测试")
+@Import(com.xu.news.config.TestConfiguration.class)
 class VectorStoreTest {
 
     @Autowired

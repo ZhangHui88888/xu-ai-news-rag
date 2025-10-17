@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("JWT工具类测试")
+@Import(com.xu.news.config.TestConfiguration.class)
 class JwtUtilTest {
 
     @Autowired

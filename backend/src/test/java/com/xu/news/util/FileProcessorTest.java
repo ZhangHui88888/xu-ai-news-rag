@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("文件处理器测试")
+@Import(com.xu.news.config.TestConfiguration.class)
 class FileProcessorTest {
 
     @Autowired
