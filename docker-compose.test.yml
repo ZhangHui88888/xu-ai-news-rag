@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # ==================== 后端测试服务 ====================
+  backend-test:
+    image: maven:3.8.6-openjdk-17-slim
+    container_name: xu-news-backend-test
+    volumes:
+      - ./backend:/app
+      - maven-repo:/root/.m2  # Maven依赖缓存
+    working_dir: /app
+    command: >
+      sh -c "
+        echo '========================================' &&
+        echo '开始运行后端测试...' &&
+        echo '========================================' &&
+        mvn clean test &&
+        echo '' &&
+        echo '========================================' &&
+        echo '生成测试覆盖率报告...' &&
+        echo '========================================' &&
+        mvn jacoco:report &&
+        echo '' &&
+        echo '✓ 后端测试完成！' &&
+        echo '覆盖率报告: backend/target/site/jacoco/index.html'
+      "
+    environment:
+      - SPRING_PROFILES_ACTIVE=test
+      - MAVEN_OPTS=-Xmx1024m
+    networks:
+      - test-network
+
+  # ==================== 前端测试服务 ====================
+  frontend-test:
+    image: node:18-alpine
+    container_name: xu-news-frontend-test
+    volumes:
+      - ./frontend:/app
+      - node-modules:/app/node_modules  # node_modules缓存
+    working_dir: /app
+    command: >
+      sh -c "
+        echo '========================================' &&
+        echo '安装前端依赖...' &&
+        echo '========================================' &&
+        npm ci &&
+        echo '' &&
+        echo '========================================' &&
+        echo '安装测试依赖...' &&
+        echo '========================================' &&
+        npm install -D vitest @vue/test-utils jsdom @vitest/ui &&
+        echo '' &&
+        echo '========================================' &&
+        echo '运行前端测试...' &&
+        echo '========================================' &&
+        npm test -- --run &&
+        echo '' &&
+        echo '✓ 前端测试完成！'
+      "
+    networks:
+      - test-network
+
+  # ==================== 完整测试（后端+前端）====================
+  all-tests:
+    image: alpine:latest
+    container_name: xu-news-all-tests
+    depends_on:
+      - backend-test
+      - frontend-test
+    command: >
+      sh -c "
+        echo '========================================' &&
+        echo '所有测试执行完成！' &&
+        echo '========================================' &&
+        echo '查看测试报告:' &&
+        echo '  • 后端覆盖率: backend/target/site/jacoco/index.html' &&
+        echo '  • 前端覆盖率: frontend/coverage/index.html' &&
+        echo '========================================'
+      "
+    networks:
+      - test-network
+
+volumes:
+  maven-repo:
+    driver: local
+  node-modules:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
+
