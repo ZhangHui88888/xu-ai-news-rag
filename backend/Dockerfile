@@ -5,6 +5,9 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
+# 复制 Maven 配置文件（使用阿里云镜像加速）
+COPY settings.xml /root/.m2/settings.xml
+
 # 复制pom.xml并下载依赖（利用Docker缓存）
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
