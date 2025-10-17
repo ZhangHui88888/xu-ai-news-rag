@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -134,7 +135,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 上传文件并导入知识库
+     * 上传文件并导入知识库（文本内容保存到数据库，不保留原始文件）
      */
     @PostMapping("/upload")
     public Result<KnowledgeEntry> upload(
@@ -147,24 +148,23 @@ public class KnowledgeController {
                 userId = (Long) authentication.getPrincipal();
             }
             
-            // 保存文件到临时目录
-            String uploadDir = "./uploads";
-            java.io.File dir = new java.io.File(uploadDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
+            // 验证文件
+            if (file.isEmpty()) {
+                return Result.error("文件不能为空");
             }
             
-            String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            java.io.File dest = new java.io.File(uploadDir, filename);
-            file.transferTo(dest);
+            log.info("📤 接收上传文件: {}, 大小: {} bytes", file.getOriginalFilename(), file.getSize());
             
-            // 从文件创建知识条目
-            KnowledgeEntry entry = knowledgeEntryService.createFromFile(dest, userId);
+            // 直接从内存中提取文本并保存到数据库，不保存原始文件
+            KnowledgeEntry entry = knowledgeEntryService.createFromUploadedFile(file, userId);
             
-            log.info("文件上传成功: {}, 知识条目ID: {}", filename, entry.getId());
-            return Result.success("上传成功", entry);
+            log.info("✅ 文件上传成功: {}, 知识条目ID: {}", file.getOriginalFilename(), entry.getId());
+            return Result.success("上传成功，文本内容已保存到知识库", entry);
+        } catch (IOException e) {
+            log.error("❌ 文件上传失败 - IO错误: {}", e.getMessage(), e);
+            return Result.error("文件处理失败: " + e.getMessage());
         } catch (Exception e) {
-            log.error("文件上传失败: {}", e.getMessage(), e);
+            log.error("❌ 文件上传失败 - 未知错误: {}", e.getMessage(), e);
             return Result.error("上传失败: " + e.getMessage());
         }
     }

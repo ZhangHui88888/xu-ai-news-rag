@@ -39,6 +39,23 @@ public class FileProcessor {
     }
 
     /**
+     * 从输入流提取文本内容（不需要保存文件）
+     */
+    public String extractText(java.io.InputStream inputStream, String filename) throws IOException {
+        String lowerFilename = filename.toLowerCase();
+        
+        if (lowerFilename.endsWith(".pdf")) {
+            return extractPdfTextFromStream(inputStream);
+        } else if (lowerFilename.endsWith(".docx")) {
+            return extractDocxTextFromStream(inputStream);
+        } else if (lowerFilename.endsWith(".txt") || lowerFilename.endsWith(".md")) {
+            return extractPlainTextFromStream(inputStream);
+        } else {
+            throw new IOException("不支持的文件类型: " + filename);
+        }
+    }
+
+    /**
      * 提取PDF文本
      */
     private String extractPdfText(File file) throws IOException {
@@ -71,6 +88,47 @@ public class FileProcessor {
      */
     private String extractPlainText(File file) throws IOException {
         return Files.readString(file.toPath());
+    }
+
+    /**
+     * 从输入流提取PDF文本
+     */
+    private String extractPdfTextFromStream(java.io.InputStream inputStream) throws IOException {
+        try (PDDocument document = PDDocument.load(inputStream)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            return stripper.getText(document);
+        }
+    }
+
+    /**
+     * 从输入流提取DOCX文本
+     */
+    private String extractDocxTextFromStream(java.io.InputStream inputStream) throws IOException {
+        try (XWPFDocument document = new XWPFDocument(inputStream)) {
+            StringBuilder text = new StringBuilder();
+            List<XWPFParagraph> paragraphs = document.getParagraphs();
+            
+            for (XWPFParagraph paragraph : paragraphs) {
+                text.append(paragraph.getText()).append("\n");
+            }
+            
+            return text.toString();
+        }
+    }
+
+    /**
+     * 从输入流提取纯文本
+     */
+    private String extractPlainTextFromStream(java.io.InputStream inputStream) throws IOException {
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8))) {
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            return content.toString();
+        }
     }
 
     /**

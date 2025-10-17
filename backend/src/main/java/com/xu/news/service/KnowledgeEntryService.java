@@ -28,6 +28,11 @@ public interface KnowledgeEntryService extends IService<KnowledgeEntry> {
     KnowledgeEntry createFromFile(File file, Long createdBy) throws IOException;
 
     /**
+     * 从上传的文件创建知识条目（直接从内存，不保存文件）
+     */
+    KnowledgeEntry createFromUploadedFile(org.springframework.web.multipart.MultipartFile file, Long createdBy) throws IOException;
+
+    /**
      * 搜索知识条目
      */
     Page<KnowledgeEntry> search(SearchRequest request);
