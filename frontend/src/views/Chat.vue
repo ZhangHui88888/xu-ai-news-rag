@@ -42,7 +42,6 @@
           type="textarea"
           :rows="3"
           placeholder="输入你的问题..."
-          @keyup.enter.ctrl="handleSend"
         />
         <el-button
           type="primary"
@@ -50,7 +49,7 @@
           @click="handleSend"
           :disabled="!inputMessage.trim()"
         >
-          发送 (Ctrl+Enter)
+          发送
         </el-button>
       </div>
     </el-card>

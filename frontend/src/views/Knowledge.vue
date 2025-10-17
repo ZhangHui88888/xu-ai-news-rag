@@ -47,6 +47,9 @@
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            :clearable="true"
             @change="handleSearch"
             style="width: 100%"
           />
@@ -230,7 +233,7 @@ const saving = ref(false)
 const tableData = ref([])
 const total = ref(0)
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(20)
 const selectedIds = ref([])
 const showUploadDialog = ref(false)
 const showDetailDialog = ref(false)
@@ -280,8 +283,10 @@ const loadData = async () => {
     if (dateRange.value && dateRange.value.length === 2) {
       params.startDate = formatDateForAPI(dateRange.value[0])
       params.endDate = formatDateForAPI(dateRange.value[1])
+      console.log('📅 日期筛选范围:', params.startDate, '至', params.endDate)
     }
     
+    console.log('🔍 查询参数:', params)
     const res = await getKnowledgeList(params)
     
     if (res && res.code === 200 && res.data) {

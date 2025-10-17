@@ -112,5 +112,70 @@ public class StatisticsController {
             return Result.error("获取详细统计信息失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 获取关键词Top10分析
+     */
+    @GetMapping("/keywords-top10")
+    public Result<java.util.List<Map<String, Object>>> getKeywordsTop10() {
+        try {
+            // 获取所有未删除的知识条目的tags
+            QueryWrapper<KnowledgeEntry> wrapper = new QueryWrapper<>();
+            wrapper.eq("deleted", 0);
+            wrapper.isNotNull("tags");
+            wrapper.ne("tags", "");
+            wrapper.select("tags");
+            
+            java.util.List<KnowledgeEntry> entries = knowledgeEntryService.list(wrapper);
+            
+            // 统计所有标签的出现次数
+            Map<String, Integer> tagCountMap = new HashMap<>();
+            
+            for (KnowledgeEntry entry : entries) {
+                String tagsJson = entry.getTags();
+                if (tagsJson != null && !tagsJson.trim().isEmpty()) {
+                    try {
+                        // 解析JSON数组
+                        com.alibaba.fastjson2.JSONArray tagsArray = com.alibaba.fastjson2.JSON.parseArray(tagsJson);
+                        for (int i = 0; i < tagsArray.size(); i++) {
+                            String tag = tagsArray.getString(i);
+                            if (tag != null && !tag.trim().isEmpty()) {
+                                tag = tag.trim();
+                                tagCountMap.put(tag, tagCountMap.getOrDefault(tag, 0) + 1);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 如果不是JSON格式，尝试按逗号分割
+                        String[] tags = tagsJson.split(",");
+                        for (String tag : tags) {
+                            tag = tag.trim();
+                            if (!tag.isEmpty()) {
+                                tagCountMap.put(tag, tagCountMap.getOrDefault(tag, 0) + 1);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 按出现次数排序，取Top10
+            java.util.List<Map<String, Object>> topKeywords = tagCountMap.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(10)
+                .map(entry -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("keyword", entry.getKey());
+                    item.put("count", entry.getValue());
+                    return item;
+                })
+                .collect(java.util.stream.Collectors.toList());
+            
+            log.info("关键词Top10统计完成，总标签数: {}, Top10: {}", tagCountMap.size(), topKeywords.size());
+            
+            return Result.success(topKeywords);
+        } catch (Exception e) {
+            log.error("获取关键词Top10失败: {}", e.getMessage(), e);
+            return Result.error("获取关键词Top10失败: " + e.getMessage());
+        }
+    }
 }
 

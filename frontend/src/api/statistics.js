@@ -14,3 +14,10 @@ export function getDetailedStatistics() {
   })
 }
 
+export function getKeywordsTop10() {
+  return request({
+    url: '/statistics/keywords-top10',
+    method: 'get'
+  })
+}
+
