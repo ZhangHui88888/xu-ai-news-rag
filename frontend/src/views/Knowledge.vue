@@ -153,8 +153,8 @@ const loadData = async () => {
     
     console.log('知识库列表:', res)
     
-    if (res.data && res.data.code === 200 && res.data.data) {
-      const data = res.data.data
+    if (res && res.code === 200 && res.data) {
+      const data = res.data
       tableData.value = data.records || []
       total.value = data.total || 0
     } else {
@@ -175,20 +175,35 @@ const handlePageChange = (page) => {
   loadData()
 }
 
-const viewDetail = (row) => {
-  currentItem.value = { ...row, content: '这是详细内容...' }
-  showDetailDialog.value = true
+const viewDetail = async (row) => {
+  try {
+    const { getKnowledge } = await import('@/api/knowledge')
+    const res = await getKnowledge(row.id)
+    if (res && res.code === 200 && res.data) {
+      currentItem.value = res.data
+      showDetailDialog.value = true
+    }
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('获取详情失败: ' + (error.message || '请稍后重试'))
+  }
 }
 
-const handleDelete = (row) => {
+const handleDelete = async (row) => {
   ElMessageBox.confirm('确定要删除这条知识吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    // TODO: 调用删除API
-    ElMessage.success('删除成功')
-    loadData()
+    try {
+      const { deleteKnowledge } = await import('@/api/knowledge')
+      await deleteKnowledge(row.id)
+      ElMessage.success('删除成功')
+      loadData()
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败: ' + (error.message || '请稍后重试'))
+    }
   }).catch(() => {})
 }
 
