@@ -7,8 +7,7 @@
         WHERE deleted = 0
         <if test="keyword != null and keyword != ''">
             AND (
-                MATCH(title, content) AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
-                OR title LIKE CONCAT('%', #{keyword}, '%')
+                title LIKE CONCAT('%', #{keyword}, '%')
                 OR content LIKE CONCAT('%', #{keyword}, '%')
             )
         </if>

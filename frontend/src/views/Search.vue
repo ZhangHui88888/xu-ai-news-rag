@@ -3,7 +3,7 @@
     <el-card class="search-card">
       <el-input
         v-model="keyword"
-        placeholder="搜索知识库..."
+        placeholder="智能语义搜索（支持向量检索）..."
         size="large"
         clearable
         @keyup.enter="handleSearch"
@@ -89,8 +89,8 @@ const handleSearch = async () => {
     
     console.log('搜索结果:', res)
     
-    if (res.data && res.data.code === 200 && res.data.data) {
-      const data = res.data.data
+    if (res && res.code === 200 && res.data) {
+      const data = res.data
       results.value = data.records || []
       total.value = data.total || 0
       

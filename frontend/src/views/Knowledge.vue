@@ -5,17 +5,22 @@
         <el-col :span="18">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索知识条目..."
+            placeholder="搜索知识条目（按标题或内容筛选）..."
             clearable
-            @keyup.enter="loadData"
+            @keyup.enter="handleSearch"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
             </template>
+            <template #append>
+              <el-button @click="handleSearch" :loading="loading">
+                搜索
+              </el-button>
+            </template>
           </el-input>
         </el-col>
         <el-col :span="6">
-          <el-button type="primary" @click="showUploadDialog = true">
+          <el-button type="primary" @click="showUploadDialog = true" style="width: 100%">
             <el-icon><Upload /></el-icon>
             上传文档
           </el-button>
@@ -167,6 +172,11 @@ const loadData = async () => {
     ElMessage.error('加载失败: ' + (error.message || '请稍后重试'))
     loading.value = false
   }
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  loadData()
 }
 
 const handlePageChange = (page) => {
