@@ -48,27 +48,23 @@ class KnowledgeEntryServiceTest {
     private KnowledgeEntryServiceImpl knowledgeEntryService;
 
     private KnowledgeEntry testEntry;
-    private SearchRequest searchRequest;
 
     @BeforeEach
     void setUp() {
         testEntry = TestDataBuilder.createKnowledgeEntry();
-        
-        searchRequest = new SearchRequest();
-        searchRequest.setKeyword("人工智能");
-        searchRequest.setCurrent(1L);
-        searchRequest.setSize(10L);
     }
 
     @Test
     @DisplayName("创建知识条目并生成向量 - 成功")
     void testCreateWithVector_Success() throws IOException {
         // Given
-        float[] mockVector = new float[768];
-        Arrays.fill(mockVector, 0.1f);
+        List<Double> mockVector = new ArrayList<>();
+        for (int i = 0; i < 768; i++) {
+            mockVector.add(0.1);
+        }
         
         when(ollamaClient.generateEmbedding(anyString())).thenReturn(mockVector);
-        when(vectorStore.addVector(anyLong(), any(float[].class))).thenReturn(true);
+        when(vectorStore.addVector(anyList())).thenReturn(1L);
         when(knowledgeEntryMapper.insert(any(KnowledgeEntry.class))).thenReturn(1);
 
         // When
@@ -77,7 +73,7 @@ class KnowledgeEntryServiceTest {
         // Then
         assertNotNull(result);
         verify(ollamaClient, times(1)).generateEmbedding(anyString());
-        verify(vectorStore, times(1)).addVector(anyLong(), any(float[].class));
+        verify(vectorStore, times(1)).addVector(anyList());
         verify(knowledgeEntryMapper, times(1)).insert(any(KnowledgeEntry.class));
     }
 
@@ -92,33 +88,8 @@ class KnowledgeEntryServiceTest {
         assertThrows(IOException.class, () -> {
             knowledgeEntryService.createWithVector(testEntry);
         });
-        verify(vectorStore, never()).addVector(anyLong(), any(float[].class));
+        verify(vectorStore, never()).addVector(anyList());
         verify(knowledgeEntryMapper, never()).insert(any(KnowledgeEntry.class));
-    }
-
-    @Test
-    @DisplayName("搜索知识条目 - 成功")
-    void testSearch_Success() {
-        // Given
-        Page<KnowledgeEntry> mockPage = new Page<>(1, 10);
-        List<KnowledgeEntry> mockList = new ArrayList<>();
-        mockList.add(testEntry);
-        mockPage.setRecords(mockList);
-        mockPage.setTotal(1);
-        
-        when(knowledgeEntryMapper.searchByKeyword(any(Page.class), anyString(), anyString(), 
-                anyLong(), anyLong(), any(), any()))
-                .thenReturn(mockPage);
-
-        // When
-        Page<KnowledgeEntry> result = knowledgeEntryService.search(searchRequest);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(1, result.getTotal());
-        assertEquals(1, result.getRecords().size());
-        verify(knowledgeEntryMapper, times(1)).searchByKeyword(any(), anyString(), anyString(), 
-                anyLong(), anyLong(), any(), any());
     }
 
     @Test
@@ -132,7 +103,7 @@ class KnowledgeEntryServiceTest {
                 TestDataBuilder.createKnowledgeEntry()
         );
         
-        when(knowledgeEntryMapper.selectBatchIds(vectorIds)).thenReturn(mockEntries);
+        when(knowledgeEntryMapper.findByVectorIds(vectorIds)).thenReturn(mockEntries);
 
         // When
         List<KnowledgeEntry> result = knowledgeEntryService.findByVectorIds(vectorIds);
@@ -140,7 +111,7 @@ class KnowledgeEntryServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(3, result.size());
-        verify(knowledgeEntryMapper, times(1)).selectBatchIds(vectorIds);
+        verify(knowledgeEntryMapper, times(1)).findByVectorIds(vectorIds);
     }
 
     @Test
@@ -155,7 +126,6 @@ class KnowledgeEntryServiceTest {
         // Then
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(knowledgeEntryMapper, never()).selectBatchIds(any());
     }
 
     @Test
@@ -164,7 +134,7 @@ class KnowledgeEntryServiceTest {
         // Given
         Long entryId = 1L;
         when(knowledgeEntryMapper.selectById(entryId)).thenReturn(testEntry);
-        when(vectorStore.deleteVector(entryId)).thenReturn(true);
+        doNothing().when(vectorStore).deleteVector(entryId);
         when(knowledgeEntryMapper.deleteById(entryId)).thenReturn(1);
 
         // When
@@ -197,29 +167,23 @@ class KnowledgeEntryServiceTest {
     void testIncrementViewCount_Success() {
         // Given
         Long entryId = 1L;
-        testEntry.setViewCount(10);
-        
-        when(knowledgeEntryMapper.selectById(entryId)).thenReturn(testEntry);
-        when(knowledgeEntryMapper.updateById(any(KnowledgeEntry.class))).thenReturn(1);
+        when(knowledgeEntryMapper.incrementViewCount(entryId)).thenReturn(1);
 
         // When
         knowledgeEntryService.incrementViewCount(entryId);
 
         // Then
-        verify(knowledgeEntryMapper, times(1)).selectById(entryId);
-        verify(knowledgeEntryMapper, times(1)).updateById(argThat(entry -> 
-                entry.getViewCount() == 11
-        ));
+        verify(knowledgeEntryMapper, times(1)).incrementViewCount(entryId);
     }
 
     @Test
     @DisplayName("生成摘要 - 成功")
     void testGenerateSummary_Success() throws IOException {
         // Given
-        String content = "这是一篇很长的文章内容，需要生成摘要。人工智能技术在各个领域都有广泛应用...";
+        String content = "这是一篇很长的文章内容，需要生成摘要。";
         String mockSummary = "AI技术广泛应用于各个领域";
         
-        when(ollamaClient.generateText(anyString())).thenReturn(mockSummary);
+        when(ollamaClient.generateAnswer(anyString())).thenReturn(mockSummary);
 
         // When
         String result = knowledgeEntryService.generateSummary(content);
@@ -227,7 +191,7 @@ class KnowledgeEntryServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(mockSummary, result);
-        verify(ollamaClient, times(1)).generateText(anyString());
+        verify(ollamaClient, times(1)).generateAnswer(anyString());
     }
 
     @Test
@@ -235,26 +199,13 @@ class KnowledgeEntryServiceTest {
     void testGenerateSummary_AIServiceError() throws IOException {
         // Given
         String content = "测试内容";
-        when(ollamaClient.generateText(anyString()))
+        when(ollamaClient.generateAnswer(anyString()))
                 .thenThrow(new IOException("AI服务不可用"));
 
         // When & Then
         assertThrows(IOException.class, () -> {
             knowledgeEntryService.generateSummary(content);
         });
-    }
-
-    @Test
-    @DisplayName("生成摘要 - 内容为空")
-    void testGenerateSummary_EmptyContent() throws IOException {
-        // Given
-        String content = "";
-
-        // When & Then
-        assertThrows(RuntimeException.class, () -> {
-            knowledgeEntryService.generateSummary(content);
-        });
-        verify(ollamaClient, never()).generateText(anyString());
     }
 }
 

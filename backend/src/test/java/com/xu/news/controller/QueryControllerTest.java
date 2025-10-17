@@ -40,9 +40,8 @@ class QueryControllerTest extends BaseControllerTest {
         
         queryResponse = new QueryResponse();
         queryResponse.setAnswer("人工智能是计算机科学的一个分支...");
-        queryResponse.setQuery("什么是人工智能？");
         queryResponse.setRetrievedEntries(new ArrayList<>());
-        queryResponse.setProcessingTimeMs(150L);
+        queryResponse.setResponseTimeMs(150L);
     }
 
     @Test
@@ -60,8 +59,7 @@ class QueryControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.answer").value(queryResponse.getAnswer()))
-                .andExpect(jsonPath("$.data.query").value(queryResponse.getQuery()))
-                .andExpect(jsonPath("$.data.processingTimeMs").exists());
+                .andExpect(jsonPath("$.data.responseTimeMs").exists());
 
         verify(queryService, times(1)).query(any(QueryRequest.class), anyLong());
     }
@@ -100,7 +98,6 @@ class QueryControllerTest extends BaseControllerTest {
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.query").value(queryResponse.getQuery()))
                 .andExpect(jsonPath("$.data.retrievedEntries").isArray());
 
         verify(queryService, times(1)).semanticSearch(any(QueryRequest.class), anyLong());

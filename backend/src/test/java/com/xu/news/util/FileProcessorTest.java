@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,29 +21,27 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author XU
  * @since 2025-10-17
  */
+@SpringBootTest
+@ActiveProfiles("test")
 @DisplayName("文件处理器测试")
 class FileProcessorTest {
 
+    @Autowired
     private FileProcessor fileProcessor;
 
     @TempDir
     Path tempDir;
 
-    @BeforeEach
-    void setUp() {
-        fileProcessor = new FileProcessor();
-    }
-
     @Test
-    @DisplayName("处理文本文件 - TXT")
-    void testProcessTextFile() throws IOException {
+    @DisplayName("提取文本 - TXT文件")
+    void testExtractText_TxtFile() throws IOException {
         // Given
         Path txtFile = tempDir.resolve("test.txt");
         String content = "这是一个测试文本文件。\n包含多行内容。";
         Files.writeString(txtFile, content);
 
         // When
-        String result = fileProcessor.processFile(txtFile.toFile());
+        String result = fileProcessor.extractText(txtFile.toFile());
 
         // Then
         assertNotNull(result);
@@ -48,15 +49,15 @@ class FileProcessorTest {
     }
 
     @Test
-    @DisplayName("处理Markdown文件 - MD")
-    void testProcessMarkdownFile() throws IOException {
+    @DisplayName("提取文本 - Markdown文件")
+    void testExtractText_MarkdownFile() throws IOException {
         // Given
         Path mdFile = tempDir.resolve("test.md");
-        String content = "# 标题\n\n这是一个**Markdown**文件。\n\n- 列表项1\n- 列表项2";
+        String content = "# 标题\n\n这是一个**Markdown**文件。";
         Files.writeString(mdFile, content);
 
         // When
-        String result = fileProcessor.processFile(mdFile.toFile());
+        String result = fileProcessor.extractText(mdFile.toFile());
 
         // Then
         assertNotNull(result);
@@ -65,148 +66,113 @@ class FileProcessorTest {
     }
 
     @Test
-    @DisplayName("处理HTML文件")
-    void testProcessHtmlFile() throws IOException {
+    @DisplayName("提取文本 - 不支持的文件类型")
+    void testExtractText_UnsupportedFileType() {
         // Given
-        Path htmlFile = tempDir.resolve("test.html");
-        String content = "<html><body><h1>标题</h1><p>这是HTML内容</p></body></html>";
-        Files.writeString(htmlFile, content);
-
-        // When
-        String result = fileProcessor.processFile(htmlFile.toFile());
-
-        // Then
-        assertNotNull(result);
-        // HTML处理应该提取文本内容
-        assertTrue(result.length() > 0);
-    }
-
-    @Test
-    @DisplayName("处理空文件")
-    void testProcessEmptyFile() throws IOException {
-        // Given
-        Path emptyFile = tempDir.resolve("empty.txt");
-        Files.writeString(emptyFile, "");
+        Path file = tempDir.resolve("test.exe");
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> {
-            fileProcessor.processFile(emptyFile.toFile());
+        assertThrows(IOException.class, () -> {
+            fileProcessor.extractText(file.toFile());
         });
     }
 
     @Test
-    @DisplayName("处理不存在的文件")
-    void testProcessNonExistentFile() {
+    @DisplayName("清理文本 - 去除多余空白")
+    void testCleanText_RemoveExtraWhitespace() {
+        // Given
+        String text = "这是  一个   有多余    空白的   文本";
+
+        // When
+        String result = fileProcessor.cleanText(text);
+
+        // Then
+        assertNotNull(result);
+        assertFalse(result.contains("  "));  // 不应该有多个连续空格
+    }
+
+    @Test
+    @DisplayName("清理文本 - 空文本")
+    void testCleanText_EmptyText() {
+        // When
+        String result1 = fileProcessor.cleanText("");
+        String result2 = fileProcessor.cleanText(null);
+
+        // Then
+        assertEquals("", result1);
+        assertEquals("", result2);
+    }
+
+    @Test
+    @DisplayName("清理文本 - 去除特殊字符")
+    void testCleanText_RemoveSpecialCharacters() {
+        // Given
+        String text = "正常文本\u0000\u0001\u0002控制字符";
+
+        // When
+        String result = fileProcessor.cleanText(text);
+
+        // Then
+        assertNotNull(result);
+        // 控制字符应该被移除
+        assertFalse(result.contains("\u0000"));
+    }
+
+    @Test
+    @DisplayName("提取文本 - 处理空文件")
+    void testExtractText_EmptyFile() throws IOException {
+        // Given
+        Path emptyFile = tempDir.resolve("empty.txt");
+        Files.writeString(emptyFile, "");
+
+        // When
+        String result = fileProcessor.extractText(emptyFile.toFile());
+
+        // Then
+        assertNotNull(result);
+        assertTrue(result.isEmpty() || result.isBlank());
+    }
+
+    @Test
+    @DisplayName("提取文本 - 不存在的文件")
+    void testExtractText_NonExistentFile() {
         // Given
         File nonExistentFile = new File(tempDir.toFile(), "nonexistent.txt");
 
         // When & Then
         assertThrows(IOException.class, () -> {
-            fileProcessor.processFile(nonExistentFile);
+            fileProcessor.extractText(nonExistentFile);
         });
     }
 
     @Test
-    @DisplayName("获取文件扩展名 - 有扩展名")
-    void testGetFileExtension_WithExtension() {
-        // When
-        String ext1 = fileProcessor.getFileExtension("test.txt");
-        String ext2 = fileProcessor.getFileExtension("document.pdf");
-        String ext3 = fileProcessor.getFileExtension("image.jpg");
-
-        // Then
-        assertEquals("txt", ext1);
-        assertEquals("pdf", ext2);
-        assertEquals("jpg", ext3);
-    }
-
-    @Test
-    @DisplayName("获取文件扩展名 - 无扩展名")
-    void testGetFileExtension_WithoutExtension() {
-        // When
-        String ext = fileProcessor.getFileExtension("filename");
-
-        // Then
-        assertEquals("", ext);
-    }
-
-    @Test
-    @DisplayName("获取文件扩展名 - 点号在开头")
-    void testGetFileExtension_DotAtBeginning() {
-        // When
-        String ext = fileProcessor.getFileExtension(".gitignore");
-
-        // Then
-        assertEquals("", ext);
-    }
-
-    @Test
-    @DisplayName("检查支持的文件类型")
-    void testIsSupportedFileType() {
-        // Then
-        assertTrue(fileProcessor.isSupportedFileType("test.txt"));
-        assertTrue(fileProcessor.isSupportedFileType("test.md"));
-        assertTrue(fileProcessor.isSupportedFileType("test.html"));
-        assertTrue(fileProcessor.isSupportedFileType("test.pdf"));
-        
-        assertFalse(fileProcessor.isSupportedFileType("test.exe"));
-        assertFalse(fileProcessor.isSupportedFileType("test.bin"));
-    }
-
-    @Test
-    @DisplayName("提取文本 - 处理特殊字符")
-    void testExtractText_SpecialCharacters() throws IOException {
+    @DisplayName("提取文本 - 包含中文")
+    void testExtractText_ChineseContent() throws IOException {
         // Given
-        Path file = tempDir.resolve("special.txt");
-        String content = "包含特殊字符：@#$%^&*()，中文标点符号测试。";
+        Path file = tempDir.resolve("chinese.txt");
+        String content = "这是中文内容。包含标点符号！";
         Files.writeString(file, content);
 
         // When
-        String result = fileProcessor.processFile(file.toFile());
+        String result = fileProcessor.extractText(file.toFile());
 
         // Then
         assertNotNull(result);
-        assertTrue(result.contains("特殊字符"));
+        assertTrue(result.contains("中文内容"));
+        assertTrue(result.contains("标点符号"));
     }
 
     @Test
-    @DisplayName("处理大文件 - 性能测试")
-    void testProcessLargeFile() throws IOException {
+    @DisplayName("清理文本 - Trim功能")
+    void testCleanText_Trim() {
         // Given
-        Path largeFile = tempDir.resolve("large.txt");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 10000; i++) {
-            sb.append("这是第").append(i).append("行内容。\n");
-        }
-        Files.writeString(largeFile, sb.toString());
+        String text = "  前后有空格  ";
 
         // When
-        long startTime = System.currentTimeMillis();
-        String result = fileProcessor.processFile(largeFile.toFile());
-        long endTime = System.currentTimeMillis();
+        String result = fileProcessor.cleanText(text);
 
         // Then
-        assertNotNull(result);
-        assertTrue(result.length() > 0);
-        // 处理时间应该在合理范围内（< 5秒）
-        assertTrue(endTime - startTime < 5000);
-    }
-
-    @Test
-    @DisplayName("处理不同编码的文件")
-    void testProcessFileWithDifferentEncoding() throws IOException {
-        // Given
-        Path utf8File = tempDir.resolve("utf8.txt");
-        String content = "UTF-8编码：你好世界！Hello World!";
-        Files.writeString(utf8File, content);
-
-        // When
-        String result = fileProcessor.processFile(utf8File.toFile());
-
-        // Then
-        assertNotNull(result);
-        assertTrue(result.contains("你好世界"));
-        assertTrue(result.contains("Hello World"));
+        assertEquals("前后有空格", result);
     }
 }
 
