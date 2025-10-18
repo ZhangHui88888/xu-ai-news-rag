@@ -70,6 +70,11 @@ services:
       dockerfile: Dockerfile
     container_name: xu-news-backend
     restart: unless-stopped
+    # DNS 配置（VMware 环境）
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 114.114.114.114
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:

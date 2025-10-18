@@ -5,12 +5,12 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# 复制 Maven 配置文件（使用阿里云镜像加速）
+# 复制 Maven 配置文件
 COPY settings.xml /root/.m2/settings.xml
 
 # 复制pom.xml并下载依赖（利用Docker缓存）
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:go-offline -B || mvn dependency:resolve -B
 
 # 复制源代码并编译
 COPY src ./src
@@ -22,10 +22,15 @@ WORKDIR /app
 
 # 创建非root用户
 RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
 
 # 从构建阶段复制jar包
-COPY --from=build /app/target/news-ai-rag.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
+
+# 修改文件所有者
+RUN chown -R spring:spring /app
+
+# 切换到非root用户
+USER spring:spring
 
 # 暴露端口
 EXPOSE 8080
