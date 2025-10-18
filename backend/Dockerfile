@@ -1,15 +1,30 @@
 # XU-News-AI-RAG Backend Dockerfile
-# 轻量构建：使用本地构建的 jar 文件（适用于 VMware 环境）
+# 多阶段构建：Maven编译 + OpenJDK运行
 
+# ==== 构建阶段 ====
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+
+# 复制 Maven 配置文件
+COPY settings.xml /root/.m2/settings.xml
+
+# 复制pom.xml并下载依赖（利用Docker缓存）
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# 复制源代码并编译
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# ==== 运行阶段 ====
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # 创建非root用户
 RUN addgroup -S spring && adduser -S spring -G spring
 
-# 复制本地构建的jar包
-# 注意：需要先在宿主机执行 mvn clean package -DskipTests
-COPY target/*.jar app.jar
+# 从构建阶段复制jar包
+COPY --from=build /app/target/*.jar app.jar
 
 # 修改文件所有者
 RUN chown -R spring:spring /app
