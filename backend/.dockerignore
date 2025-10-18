@@ -1,0 +1,40 @@
+# Maven
+.mvn
+mvnw
+mvnw.cmd
+
+# IDE
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+
+# 编译临时文件
+target/classes
+target/test-classes
+target/generated-sources
+target/generated-test-sources
+target/maven-archiver
+target/maven-status
+target/surefire-reports
+target/jacoco.exec
+
+# 但保留 jar 文件
+!target/*.jar
+
+# Git
+.git
+.gitignore
+
+# 文档
+*.md
+!README.md
+
+# 日志
+*.log
+
+# 其他
+.DS_Store
+Thumbs.db
+
