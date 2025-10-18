@@ -161,12 +161,23 @@ public class QueryServiceImpl implements QueryService {
         if (request.getNeedAnswer()) {
             if (entries.isEmpty()) {
                 // 知识库中没有相关内容，直接用LLM回答
-                log.debug("知识库中未找到相关内容，使用LLM直接回答");
-                answer = "抱歉，知识库中暂时没有找到与您问题相关的内容。这可能是因为：\n" +
-                         "1. 知识库还没有导入相关数据\n" +
-                         "2. 您的问题超出了当前知识库的范围\n\n" +
-                         "建议：请先导入相关的新闻或文档到知识库，或者等待RSS自动采集任务完成。";
+                log.info("知识库中未找到相关内容，使用LLM直接回答用户问题");
+                
+                // 构建提示词，告诉大模型直接回答问题
+                String prompt = String.format(
+                    "请回答以下问题。如果你不确定答案，请基于你的知识尽可能提供有用的信息。\n\n" +
+                    "问题：%s\n\n" +
+                    "注意：这个问题在知识库中没有找到相关内容，请基于你的通用知识回答。",
+                    request.getQuery()
+                );
+                
+                answer = ollamaClient.generateAnswer(prompt);
+                
+                // 在答案末尾添加提示
+                answer = answer + "\n\n---\n💡 提示：以上回答基于大模型的通用知识生成。" +
+                         "如需更准确的信息，建议导入相关文档到知识库。";
             } else {
+                // 知识库中有相关内容，基于检索结果生成回答
                 List<String> context = entries.stream()
                         .map(e -> e.getTitle() + "\n" + e.getContent())
                         .collect(Collectors.toList());
