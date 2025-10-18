@@ -133,8 +133,11 @@ class KnowledgeEntryServiceTest {
     void testDeleteWithVector_Success() {
         // Given
         Long entryId = 1L;
+        Long vectorId = 100L;
+        testEntry.setVectorId(vectorId);  // 设置 vectorId
+        
         when(knowledgeEntryMapper.selectById(entryId)).thenReturn(testEntry);
-        doNothing().when(vectorStore).deleteVector(entryId);
+        doNothing().when(vectorStore).deleteVector(vectorId);  // 使用 vectorId 而不是 entryId
         when(knowledgeEntryMapper.deleteById(entryId)).thenReturn(1);
 
         // When
@@ -142,7 +145,7 @@ class KnowledgeEntryServiceTest {
 
         // Then
         assertTrue(result);
-        verify(vectorStore, times(1)).deleteVector(entryId);
+        verify(vectorStore, times(1)).deleteVector(vectorId);  // 验证用 vectorId
         verify(knowledgeEntryMapper, times(1)).deleteById(entryId);
     }
 
@@ -183,7 +186,7 @@ class KnowledgeEntryServiceTest {
         String content = "这是一篇很长的文章内容，需要生成摘要。";
         String mockSummary = "AI技术广泛应用于各个领域";
         
-        when(ollamaClient.generateAnswer(anyString())).thenReturn(mockSummary);
+        when(ollamaClient.generateSummary(anyString())).thenReturn(mockSummary);
 
         // When
         String result = knowledgeEntryService.generateSummary(content);
@@ -191,7 +194,7 @@ class KnowledgeEntryServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(mockSummary, result);
-        verify(ollamaClient, times(1)).generateAnswer(anyString());
+        verify(ollamaClient, times(1)).generateSummary(anyString());
     }
 
     @Test
@@ -199,7 +202,7 @@ class KnowledgeEntryServiceTest {
     void testGenerateSummary_AIServiceError() throws IOException {
         // Given
         String content = "测试内容";
-        when(ollamaClient.generateAnswer(anyString()))
+        when(ollamaClient.generateSummary(anyString()))
                 .thenThrow(new IOException("AI服务不可用"));
 
         // When & Then
