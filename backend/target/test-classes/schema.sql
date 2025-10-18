@@ -7,10 +7,10 @@ CREATE TABLE IF NOT EXISTS "user" (
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     full_name VARCHAR(100),
-    avatar_url VARCHAR(255),
-    role VARCHAR(20) DEFAULT 'USER',
+    role VARCHAR(20) DEFAULT 'user',
+    preferences VARCHAR(2000),
+    last_login_at DATETIME,
     status TINYINT DEFAULT 1,
-    last_login_time DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT DEFAULT 0

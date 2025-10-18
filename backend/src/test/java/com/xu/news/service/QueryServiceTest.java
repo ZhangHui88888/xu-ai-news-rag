@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -69,6 +70,10 @@ class QueryServiceTest {
         queryRequest.setNeedAnswer(true);
         
         testEntry = TestDataBuilder.createKnowledgeEntry();
+        
+        // 设置 @Value 注解的字段值
+        ReflectionTestUtils.setField(queryService, "rerankerEnabled", false);
+        ReflectionTestUtils.setField(queryService, "candidateMultiplier", 4);
     }
 
     @Test
@@ -86,7 +91,7 @@ class QueryServiceTest {
         String mockAnswer = "人工智能（AI）是计算机科学的一个分支。";
         
         when(ollamaClient.generateEmbedding(anyString())).thenReturn(mockVector);
-        when(vectorStore.search(anyList(), anyInt())).thenReturn(mockSearchResults);
+        when(vectorStore.searchWithThreshold(anyList(), anyInt(), anyDouble())).thenReturn(mockSearchResults);
         when(knowledgeEntryService.findByVectorIds(anyList())).thenReturn(mockEntries);
         when(ollamaClient.generateAnswer(anyString(), anyList())).thenReturn(mockAnswer);
         when(userQueryHistoryMapper.insert(any(UserQueryHistory.class))).thenReturn(1);
@@ -101,7 +106,7 @@ class QueryServiceTest {
         assertNotNull(response.getRetrievedEntries());
         
         verify(ollamaClient, times(1)).generateEmbedding(anyString());
-        verify(vectorStore, times(1)).search(anyList(), anyInt());
+        verify(vectorStore, times(1)).searchWithThreshold(anyList(), anyInt(), anyDouble());
         verify(knowledgeEntryService, times(1)).findByVectorIds(anyList());
         verify(ollamaClient, times(1)).generateAnswer(anyString(), anyList());
     }
@@ -120,7 +125,7 @@ class QueryServiceTest {
         List<KnowledgeEntry> mockEntries = Arrays.asList(testEntry);
         
         when(ollamaClient.generateEmbedding(anyString())).thenReturn(mockVector);
-        when(vectorStore.search(anyList(), anyInt())).thenReturn(mockSearchResults);
+        when(vectorStore.searchWithThreshold(anyList(), anyInt(), anyDouble())).thenReturn(mockSearchResults);
         when(knowledgeEntryService.findByVectorIds(anyList())).thenReturn(mockEntries);
         when(userQueryHistoryMapper.insert(any(UserQueryHistory.class))).thenReturn(1);
 
@@ -132,7 +137,8 @@ class QueryServiceTest {
         assertNotNull(response.getRetrievedEntries());
         
         verify(ollamaClient, times(1)).generateEmbedding(anyString());
-        verify(vectorStore, times(1)).search(anyList(), anyInt());
+        verify(vectorStore, times(1)).searchWithThreshold(anyList(), anyInt(), anyDouble());
+        verify(knowledgeEntryService, times(1)).findByVectorIds(anyList());
         verify(ollamaClient, never()).generateAnswer(anyString(), anyList());
     }
 
@@ -145,7 +151,8 @@ class QueryServiceTest {
         List<VectorStore.SearchResult> mockSearchResults = new ArrayList<>();
         
         when(ollamaClient.generateEmbedding(anyString())).thenReturn(mockVector);
-        when(vectorStore.search(anyList(), anyInt())).thenReturn(mockSearchResults);
+        when(vectorStore.searchWithThreshold(anyList(), anyInt(), anyDouble())).thenReturn(mockSearchResults);
+        when(userQueryHistoryMapper.insert(any(UserQueryHistory.class))).thenReturn(1);
 
         // When
         QueryResponse response = queryService.query(queryRequest, testUserId);
@@ -169,7 +176,7 @@ class QueryServiceTest {
             queryService.query(queryRequest, testUserId);
         });
         
-        verify(vectorStore, never()).search(anyList(), anyInt());
+        verify(vectorStore, never()).searchWithThreshold(anyList(), anyInt(), anyDouble());
         verify(knowledgeEntryService, never()).findByVectorIds(anyList());
     }
 
@@ -185,7 +192,7 @@ class QueryServiceTest {
         List<KnowledgeEntry> mockEntries = Arrays.asList(testEntry);
         
         when(ollamaClient.generateEmbedding(anyString())).thenReturn(mockVector);
-        when(vectorStore.search(anyList(), anyInt())).thenReturn(mockSearchResults);
+        when(vectorStore.searchWithThreshold(anyList(), anyInt(), anyDouble())).thenReturn(mockSearchResults);
         when(knowledgeEntryService.findByVectorIds(anyList())).thenReturn(mockEntries);
         when(ollamaClient.generateAnswer(anyString(), anyList()))
                 .thenThrow(new IOException("LLM服务不可用"));
@@ -209,8 +216,9 @@ class QueryServiceTest {
         List<KnowledgeEntry> mockEntries = Arrays.asList(testEntry);
         
         when(ollamaClient.generateEmbedding(anyString())).thenReturn(mockVector);
-        when(vectorStore.search(anyList(), anyInt())).thenReturn(mockSearchResults);
+        when(vectorStore.searchWithThreshold(anyList(), anyInt(), anyDouble())).thenReturn(mockSearchResults);
         when(knowledgeEntryService.findByVectorIds(anyList())).thenReturn(mockEntries);
+        when(userQueryHistoryMapper.insert(any(UserQueryHistory.class))).thenReturn(1);
 
         // When
         QueryResponse response = queryService.semanticSearch(queryRequest, testUserId);
@@ -220,7 +228,7 @@ class QueryServiceTest {
         assertNotNull(response.getRetrievedEntries());
         
         verify(ollamaClient, times(1)).generateEmbedding(anyString());
-        verify(vectorStore, times(1)).search(anyList(), anyInt());
+        verify(vectorStore, times(1)).searchWithThreshold(anyList(), anyInt(), anyDouble());
         verify(knowledgeEntryService, times(1)).findByVectorIds(anyList());
         verify(ollamaClient, never()).generateAnswer(anyString(), anyList());
     }
