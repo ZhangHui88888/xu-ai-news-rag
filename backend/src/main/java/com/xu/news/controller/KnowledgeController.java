@@ -165,11 +165,27 @@ public class KnowledgeController {
     public Result<Map<String, Object>> batchDelete(@RequestBody Map<String, Object> params) {
         try {
             @SuppressWarnings("unchecked")
-            java.util.List<Long> ids = (java.util.List<Long>) params.get("ids");
+            java.util.List<Object> idsObj = (java.util.List<Object>) params.get("ids");
             
-            if (ids == null || ids.isEmpty()) {
+            if (idsObj == null || idsObj.isEmpty()) {
                 return Result.error("请选择要删除的条目");
             }
+            
+            // 将Object转换为Long，兼容Integer和Long类型
+            java.util.List<Long> ids = new java.util.ArrayList<>();
+            for (Object idObj : idsObj) {
+                if (idObj instanceof Integer) {
+                    ids.add(((Integer) idObj).longValue());
+                } else if (idObj instanceof Long) {
+                    ids.add((Long) idObj);
+                } else if (idObj instanceof String) {
+                    ids.add(Long.parseLong((String) idObj));
+                } else {
+                    log.warn("无法识别的ID类型: {}, 值: {}", idObj.getClass().getName(), idObj);
+                }
+            }
+            
+            log.info("🗑️ 批量删除知识条目，共 {} 条", ids.size());
             
             int successCount = 0;
             int failCount = 0;
@@ -179,11 +195,13 @@ public class KnowledgeController {
                     boolean success = knowledgeEntryService.deleteWithVector(id);
                     if (success) {
                         successCount++;
+                        log.debug("✅ 删除成功: ID={}", id);
                     } else {
                         failCount++;
+                        log.warn("⚠️ 删除失败: ID={}", id);
                     }
                 } catch (Exception e) {
-                    log.error("删除知识条目{}失败: {}", id, e.getMessage());
+                    log.error("❌ 删除知识条目{}失败: {}", id, e.getMessage());
                     failCount++;
                 }
             }
@@ -193,6 +211,9 @@ public class KnowledgeController {
             result.put("failCount", failCount);
             result.put("total", ids.size());
             
+            log.info("📊 批量删除完成 - 成功: {}, 失败: {}, 总数: {}", 
+                successCount, failCount, ids.size());
+            
             if (failCount == 0) {
                 return Result.success("批量删除成功", result);
             } else if (successCount == 0) {
@@ -201,7 +222,7 @@ public class KnowledgeController {
                 return Result.success("部分删除成功", result);
             }
         } catch (Exception e) {
-            log.error("批量删除失败: {}", e.getMessage(), e);
+            log.error("❌ 批量删除失败: {}", e.getMessage(), e);
             return Result.error("批量删除失败: " + e.getMessage());
         }
     }
